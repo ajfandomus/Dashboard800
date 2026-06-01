@@ -28,7 +28,7 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 export default function AIAsk() {
   const [prompt, setPrompt] = useState('');
-const [sheetScope] = useState('all');
+const [sheetScope, setSheetScope] = useState('all');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(null);
