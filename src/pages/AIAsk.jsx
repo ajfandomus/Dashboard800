@@ -24,11 +24,11 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 export default function AIAsk() {
   const [prompt, setPrompt] = useState('');
-  const [sheetScope, setSheetScope] = useState('all');
+const [sheetScope] = useState('all');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -39,7 +39,8 @@ export default function AIAsk() {
 
   const orders = useSheetData('orders');
   const products = useSheetData('products');
-
+const delivery = useSheetData('delivery');
+const allOrders = useSheetData('all-orders');
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
@@ -150,10 +151,10 @@ export default function AIAsk() {
   const handleAsk = async () => {
     if (!prompt.trim() || isLoading) return;
 
-    if (!GROQ_API_KEY) {
-      toast.error('Missing Groq API key. Add VITE_GROQ_API_KEY in .env');
-      return;
-    }
+  if (!GEMINI_API_KEY) {
+  toast.error('Missing Gemini API key. Add VITE_GEMINI_API_KEY in .env');
+  return;
+}
 
     const userMsg = prompt.trim();
     setPrompt('');
@@ -199,6 +200,26 @@ export default function AIAsk() {
 
       const sections = [];
 
+sections.push(`
+=== ORDERS ===
+${JSON.stringify(orders.data.slice(0, 1000))}
+`);
+
+sections.push(`
+=== PRODUCTS ===
+${JSON.stringify(products.data.slice(0, 1000))}
+`);
+
+sections.push(`
+=== DELIVERY ===
+${JSON.stringify(delivery.data.slice(0, 1000))}
+`);
+
+sections.push(`
+=== ALL SHOPIFY ORDERS ===
+${JSON.stringify(allOrders.data.slice(0, 1000))}
+`);
+
       if ((sheetScope === 'all' || sheetScope === 'orders') && orders.data.length) {
         sections.push(
           `=== ORDERS (${orders.data.length} rows) ===\n${toLines(
@@ -220,61 +241,73 @@ export default function AIAsk() {
         );
       }
 
-      const systemPrompt = `You are an expert business analyst for a luxury flower ecommerce business in the UAE.
+   const systemPrompt = `
+You are the AI business analyst for 800Flower.
 
-Available data: Orders + Products.
+You have access to ALL dashboard data:
 
-Schema:
-- Orders: order_date | order_id | customer_name | product | quantity | status | delivery_status | florist | city | payment
-- Products: name | category | sales_count | order_count | trend | last_order_date
-
-=== AGGREGATED SUMMARY ===
-${JSON.stringify(dataSummary, null, 2)}
-
-${sections.join('\n\n')}
+- Orders
+- Products
+- Delivery
+- Shopify Orders
 
 Rules:
-- Answer short and direct.
-- Lead with the answer immediately.
-- Max 5 bullet points.
-- Do not say "based on the data" unless needed.
-- Use only the data provided above.
-- If the user asks for advice, give practical business advice.`;
 
-      const res = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
+1. Search all datasets before answering.
+2. If user asks about a flower/product, search products and orders.
+3. Calculate totals from actual data.
+4. Never guess.
+5. If data exists, provide exact numbers.
+6. Show trends and insights when possible.
+7. Keep answers short and business-focused.
+8. Use all provided data before saying "not found".
+
+=== DASHBOARD DATA ===
+
+${sections.join('\n\n')}
+`;
+
+     const res = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${GROQ_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-            max_tokens: 400,
-            messages: [
-              {
-                role: 'system',
-                content: systemPrompt,
-              },
-              ...newMessages.map(message => ({
-                role: message.role,
-                content: message.content,
-              })),
-            ],
-          }),
+          role: 'user',
+          parts: [
+            {
+              text: `${systemPrompt}
+
+User Question:
+${userMsg}`
+            }
+          ]
         }
-      );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData?.error?.message || `API error ${res.status}`);
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 1200,
       }
+    }),
+  }
+);
 
-      const data = await res.json();
+if (!res.ok) {
+  const errData = await res.json();
+  throw new Error(
+    errData?.error?.message || `Gemini API Error ${res.status}`
+  );
+}
 
-      const text =
-        data.choices?.[0]?.message?.content || 'No response received.';
+const data = await res.json();
+
+const text =
+  data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+  'No response received.';
 
       setMessages(prev => [
         ...prev,
