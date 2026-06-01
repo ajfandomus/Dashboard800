@@ -32,7 +32,7 @@ function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/Login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <AppLayout />;
@@ -44,7 +44,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route
-        path="/Login"
+        path="/login"
         element={
           isAuthenticated ? <Navigate to="/" replace /> : <Login />
         }
