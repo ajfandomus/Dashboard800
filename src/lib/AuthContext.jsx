@@ -1,0 +1,34 @@
+import React, { createContext, useState, useContext } from 'react';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user] = useState({ name: 'Admin', email: 'admin@local' });
+
+  const logout = () => {
+    window.location.reload();
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: true,
+      isLoadingAuth: false,
+      isLoadingPublicSettings: false,
+      authError: null,
+      authChecked: true,
+      logout,
+      navigateToLogin: () => {},
+      checkUserAuth: () => {},
+      checkAppState: () => {},
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+};

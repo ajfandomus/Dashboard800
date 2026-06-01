@@ -1,0 +1,29 @@
+{
+  "name": "CachedSheetData",
+  "type": "object",
+  "properties": {
+    "sheet_key": {
+      "type": "string",
+      "description": "References SheetConfig.sheet_key"
+    },
+    "data": {
+      "type": "array",
+      "description": "Array of row objects from the sheet",
+      "items": {
+        "type": "object"
+      }
+    },
+    "row_count": {
+      "type": "number",
+      "description": "Number of rows cached"
+    },
+    "last_fetched": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When data was last fetched"
+    }
+  },
+  "required": [
+    "sheet_key"
+  ]
+}
