@@ -141,11 +141,11 @@ const dateButtons = [
 
 export default function Orders() {
   const [filters, setFilters] = useState({});
-  const [dateFilter, setDateFilter] = useState('all');
+ const [dateFilter, setDateFilter] = useState('today');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const [deliveryDateFilter, setDeliveryDateFilter] = useState('all');
+  const [deliveryDateFilter, setDeliveryDateFilter] = useState('today');
   const [deliveryFromDate, setDeliveryFromDate] = useState('');
   const [deliveryToDate, setDeliveryToDate] = useState('');
 
