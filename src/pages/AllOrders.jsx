@@ -111,7 +111,7 @@ const setPageData = useDashboardStore(s => s.setPageData);
             <div className="rounded-3xl border bg-gradient-to-br from-white via-blue-50/40 to-white p-6 shadow-sm">
                 <PageHeader
                     title="All Shopify Orders"
-                    subtitle="Live orders directly from Shopify API"
+                    subtitle="Live orders directly from Shopify"
                     onRefresh={fetchOrders}
                     isLoading={loading}
                 />

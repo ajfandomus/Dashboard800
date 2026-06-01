@@ -7,6 +7,8 @@ import ChartCard from '@/components/dashboard/ChartCard';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useDashboardStore } from '@/lib/dashboardStore';
 import LoadingState from '@/components/dashboard/LoadingState';
+import { supabase } from '@/lib/supabaseClient';
+
 import {
   ShoppingBag,
   Truck,
@@ -34,7 +36,6 @@ const columns = [
   { key: 'time_to_delivery', label: 'Time to Delivery' },
   { key: 'dispatch_time', label: 'Dispatch Time' },
   { key: 'payment', label: 'Channel' },
-
 ];
 
 function parseOrderDate(value) {
@@ -55,7 +56,7 @@ function parseDeliveryDate(value) {
   if (!value) return null;
 
   const text = String(value).trim();
- const parts = text.split(/[\/\-]/);
+  const parts = text.split(/[\/\-]/);
 
   if (parts.length === 3) {
     const [day, month, year] = parts;
@@ -141,7 +142,7 @@ const dateButtons = [
 
 export default function Orders() {
   const [filters, setFilters] = useState({});
- const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState('today');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -152,14 +153,17 @@ export default function Orders() {
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const [dragColumnKey, setDragColumnKey] = useState(null);
 
-  const [visibleColumns, setVisibleColumns] = useState(columns.map(col => col.key));
+  const [visibleColumns, setVisibleColumns] = useState(
+    columns.map(col => col.key)
+  );
 
   const [savedViews, setSavedViews] = useState([]);
   const [activeViewId, setActiveViewId] = useState('default');
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [newViewName, setNewViewName] = useState('');
-  const [viewColumns, setViewColumns] = useState([]);
-const setPageData = useDashboardStore(s => s.setPageData);
+
+  const setPageData = useDashboardStore(s => s.setPageData);
+
   const {
     data,
     allData,
@@ -169,19 +173,21 @@ const setPageData = useDashboardStore(s => s.setPageData);
   } = useSheetData('orders', { filters });
 
   useEffect(() => {
-    const storedViews = localStorage.getItem('orders_column_views');
-
-    if (storedViews) {
-      setSavedViews(JSON.parse(storedViews));
-    }
+    loadViews();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('orders_column_views', JSON.stringify(savedViews));
-  }, [savedViews]);
+  async function loadViews() {
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .select('*')
+      .eq('page_name', 'orders')
+      .order('created_at', { ascending: true });
 
+    if (!error) {
+      setSavedViews(data || []);
+    }
+  }
 
- 
   const displayedColumns = useMemo(
     () =>
       visibleColumns
@@ -191,18 +197,16 @@ const setPageData = useDashboardStore(s => s.setPageData);
   );
 
   const popupColumns = useMemo(() => {
-    return columns
-      .slice()
-      .sort((a, b) => {
-        const ai = visibleColumns.indexOf(a.key);
-        const bi = visibleColumns.indexOf(b.key);
+    return columns.slice().sort((a, b) => {
+      const ai = visibleColumns.indexOf(a.key);
+      const bi = visibleColumns.indexOf(b.key);
 
-        if (ai === -1 && bi === -1) return 0;
-        if (ai === -1) return 1;
-        if (bi === -1) return -1;
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
 
-        return ai - bi;
-      });
+      return ai - bi;
+    });
   }, [visibleColumns]);
 
   const toggleColumn = key => {
@@ -238,7 +242,7 @@ const setPageData = useDashboardStore(s => s.setPageData);
 
   const applyView = view => {
     setActiveViewId(view.id);
-    setVisibleColumns(view.columns);
+    setVisibleColumns(view.visible_columns || []);
   };
 
   const applyFullView = () => {
@@ -246,24 +250,41 @@ const setPageData = useDashboardStore(s => s.setPageData);
     setVisibleColumns(columns.map(col => col.key));
   };
 
-const saveCurrentView = () => {
-  if (!newViewName.trim()) {
-    alert('Please enter view name');
-    return;
-  }
+  const saveCurrentView = async () => {
+    if (!newViewName.trim()) {
+      alert('Please enter view name');
+      return;
+    }
 
-  const newView = {
-    id: Date.now().toString(),
-    name: newViewName.trim(),
-    columns: visibleColumns,
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .insert({
+        page_name: 'orders',
+        view_name: newViewName.trim(),
+        visible_columns: visibleColumns,
+        active_view: false,
+      })
+      .select();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    if (data?.length) {
+      setSavedViews(prev => [...prev, data[0]]);
+      setActiveViewId(data[0].id);
+      setNewViewName('');
+      setViewModalOpen(false);
+    }
   };
 
-  setSavedViews(prev => [...prev, newView]);
-  setActiveViewId(newView.id);
-  setViewModalOpen(false);
-  setNewViewName('');
-};
-  const deleteView = viewId => {
+  const deleteView = async viewId => {
+    await supabase
+      .from('dashboard_views')
+      .delete()
+      .eq('id', viewId);
+
     setSavedViews(prev => prev.filter(view => view.id !== viewId));
 
     if (activeViewId === viewId) {
@@ -273,6 +294,7 @@ const saveCurrentView = () => {
 
   const filteredOrders = useMemo(() => {
     const orderRange = getDateRange(dateFilter, fromDate, toDate);
+
     const deliveryRange = getDateRange(
       deliveryDateFilter,
       deliveryFromDate,
@@ -281,8 +303,9 @@ const saveCurrentView = () => {
 
     return data
       .filter(order => {
-         const status = order.delivery_status || order.status || '';
-  if (status === 'Delivered') return false;
+        const status = order.delivery_status || order.status || '';
+        if (status === 'Delivered') return false;
+
         const orderDate = parseOrderDate(order.order_date);
         const deliveryDate = parseDeliveryDate(order.delivery_date);
 
@@ -318,11 +341,13 @@ const saveCurrentView = () => {
     deliveryFromDate,
     deliveryToDate,
   ]);
- useEffect(() => {
-  if (filteredOrders.length) {
-    setPageData('orders', filteredOrders);
-  }
-}, [filteredOrders]);
+
+  useEffect(() => {
+    if (filteredOrders.length) {
+      setPageData('orders', filteredOrders);
+    }
+  }, [filteredOrders, setPageData]);
+
   const filterConfigs = useMemo(() => [
     {
       key: 'delivery_status',
@@ -356,12 +381,18 @@ const saveCurrentView = () => {
   ]), [filteredOrders]);
 
   const deliveredCount = useMemo(
-    () => filteredOrders.filter(o => o.delivery_status === 'Delivered' || o.status === 'Delivered').length,
+    () =>
+      filteredOrders.filter(
+        o => o.delivery_status === 'Delivered' || o.status === 'Delivered'
+      ).length,
     [filteredOrders]
   );
 
   const printedCount = useMemo(
-    () => filteredOrders.filter(o => o.printed === true || o.print_status === 'PRINTED').length,
+    () =>
+      filteredOrders.filter(
+        o => o.printed === true || o.print_status === 'PRINTED'
+      ).length,
     [filteredOrders]
   );
 
@@ -575,7 +606,7 @@ const saveCurrentView = () => {
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  {view.name}
+                  {view.view_name}
                 </button>
 
                 <button
@@ -684,74 +715,74 @@ const saveCurrentView = () => {
           </div>
         </div>
 
-       {viewModalOpen && (
-  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4">
-    <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl">
-      <h3 className="text-lg font-bold text-slate-900">
-        Save Current View
-      </h3>
+        {viewModalOpen && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-bold text-slate-900">
+                Save Current View
+              </h3>
 
-      <p className="mt-1 text-sm text-slate-500">
-        Select the columns you want and save them as a view.
-      </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Select the columns you want and save them as a view.
+              </p>
 
-      <input
-        type="text"
-        value={newViewName}
-        onChange={e => setNewViewName(e.target.value)}
-        placeholder="Example: Logistics"
-        className="mt-4 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-slate-400"
-      />
+              <input
+                type="text"
+                value={newViewName}
+                onChange={e => setNewViewName(e.target.value)}
+                placeholder="Example: Logistics"
+                className="mt-4 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-slate-400"
+              />
 
-      <div className="mt-4 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-3">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {columns.map(col => {
-            const checked = visibleColumns.includes(col.key);
+              <div className="mt-4 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 p-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {columns.map(col => {
+                    const checked = visibleColumns.includes(col.key);
 
-            return (
-              <label
-                key={col.key}
-                className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-slate-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleColumn(col.key)}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
+                    return (
+                      <label
+                        key={col.key}
+                        className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleColumn(col.key)}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
 
-                <span className="font-medium text-slate-700">
-                  {col.label}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
+                        <span className="font-medium text-slate-700">
+                          {col.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
 
-      <div className="mt-5 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setViewModalOpen(false);
-            setNewViewName('');
-          }}
-          className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-        >
-          Cancel
-        </button>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewModalOpen(false);
+                    setNewViewName('');
+                  }}
+                  className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  Cancel
+                </button>
 
-       <button
-  type="button"
-  onClick={saveCurrentView}
-  className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
->
-  Save View
-</button>
-      </div>
-    </div>
-  </div>
-)}
+                <button
+                  type="button"
+                  onClick={saveCurrentView}
+                  className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Save View
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <DataTable
           columns={displayedColumns}
