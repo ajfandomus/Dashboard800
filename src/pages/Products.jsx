@@ -136,11 +136,11 @@ export default function Products() {
   const [filters, setFilters] = useState({});
   const [search, setSearch] = useState('');
 
-  const [orderDateFilter, setOrderDateFilter] = useState('all');
+  const [orderDateFilter, setOrderDateFilter] = useState('today');
   const [orderFromDate, setOrderFromDate] = useState('');
   const [orderToDate, setOrderToDate] = useState('');
 
-  const [deliveryDateFilter, setDeliveryDateFilter] = useState('all');
+  const [deliveryDateFilter, setDeliveryDateFilter] = useState('today');
   const [deliveryFromDate, setDeliveryFromDate] = useState('');
   const [deliveryToDate, setDeliveryToDate] = useState('');
 
