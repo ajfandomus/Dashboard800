@@ -8,6 +8,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { useDashboardStore } from '@/lib/dashboardStore';
 import LoadingState from '@/components/dashboard/LoadingState';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 
 import {
   ShoppingBag,
@@ -141,6 +142,8 @@ const dateButtons = [
 ];
 
 export default function Orders() {
+  const { user } = useAuth();
+
   const [filters, setFilters] = useState({});
   const [dateFilter, setDateFilter] = useState('today');
   const [fromDate, setFromDate] = useState('');
@@ -173,14 +176,17 @@ export default function Orders() {
   } = useSheetData('orders', { filters });
 
   useEffect(() => {
-    loadViews();
-  }, []);
+    if (user?.email) {
+      loadViews();
+    }
+  }, [user?.email]);
 
   async function loadViews() {
     const { data, error } = await supabase
       .from('dashboard_views')
       .select('*')
       .eq('page_name', 'orders')
+      .eq('user_email', user?.email)
       .order('created_at', { ascending: true });
 
     if (!error) {
@@ -256,6 +262,11 @@ export default function Orders() {
       return;
     }
 
+    if (!user?.email) {
+      alert('Please login again');
+      return;
+    }
+
     const { data, error } = await supabase
       .from('dashboard_views')
       .insert({
@@ -263,6 +274,7 @@ export default function Orders() {
         view_name: newViewName.trim(),
         visible_columns: visibleColumns,
         active_view: false,
+        user_email: user.email,
       })
       .select();
 
@@ -283,7 +295,8 @@ export default function Orders() {
     await supabase
       .from('dashboard_views')
       .delete()
-      .eq('id', viewId);
+      .eq('id', viewId)
+      .eq('user_email', user?.email);
 
     setSavedViews(prev => prev.filter(view => view.id !== viewId));
 

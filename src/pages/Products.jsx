@@ -18,7 +18,8 @@ import {
   GripVertical,
   Search,
 } from 'lucide-react';
-
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 const columns = [
   { key: 'name', label: 'Product Name' },
   { key: 'category', label: 'Category' },
@@ -147,14 +148,10 @@ export default function Products() {
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const [dragColumnKey, setDragColumnKey] = useState(null);
 
-  const [visibleColumns, setVisibleColumns] = useState(() => {
-    const saved = localStorage.getItem('products_visible_columns');
-
-    return saved
-      ? JSON.parse(saved)
-      : columns.map(col => col.key);
-  });
-
+  const [visibleColumns, setVisibleColumns] = useState(
+  columns.map(col => col.key)
+);
+   const { user } = useAuth();
   const [savedViews, setSavedViews] = useState([]);
   const [activeViewId, setActiveViewId] = useState('default');
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -165,27 +162,24 @@ export default function Products() {
 
   const isLoading = products.isLoading || orders.isLoading;
 const setPageData = useDashboardStore(s => s.setPageData);
-  useEffect(() => {
-    const storedViews = localStorage.getItem('products_column_views');
+ useEffect(() => {
+  if (user?.email) {
+    loadViews();
+  }
+}, [user?.email]);
 
-    if (storedViews) {
-      setSavedViews(JSON.parse(storedViews));
-    }
-  }, []);
+async function loadViews() {
+  const { data, error } = await supabase
+    .from('dashboard_views')
+    .select('*')
+    .eq('page_name', 'products')
+    .eq('user_email', user?.email)
+    .order('created_at');
 
-  useEffect(() => {
-    localStorage.setItem(
-      'products_column_views',
-      JSON.stringify(savedViews)
-    );
-  }, [savedViews]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      'products_visible_columns',
-      JSON.stringify(visibleColumns)
-    );
-  }, [visibleColumns]);
+  if (!error) {
+    setSavedViews(data || []);
+  }
+}
 
   const displayedColumns = useMemo(
     () =>
@@ -236,43 +230,53 @@ const setPageData = useDashboardStore(s => s.setPageData);
     });
   };
 
-  const applyFullView = () => {
-    setActiveViewId('default');
-    setVisibleColumns(columns.map(col => col.key));
-  };
+ const applyView = view => {
+  setActiveViewId(view.id);
+  setVisibleColumns(view.visible_columns || []);
+};
 
   const applyView = view => {
     setActiveViewId(view.id);
     setVisibleColumns(view.columns);
   };
 
-  const saveCurrentView = () => {
-    if (!newViewName.trim()) return;
+ const saveCurrentView = async () => {
+  if (!newViewName.trim()) return;
 
-    const newView = {
-      id: Date.now().toString(),
-      name: newViewName.trim(),
-      columns: visibleColumns,
-    };
+  const { data, error } = await supabase
+    .from('dashboard_views')
+    .insert({
+      page_name: 'products',
+      view_name: newViewName.trim(),
+      visible_columns: visibleColumns,
+      active_view: false,
+      user_email: user?.email,
+    })
+    .select();
 
-    setSavedViews(prev => [...prev, newView]);
-
-    setActiveViewId(newView.id);
-
+  if (!error && data?.length) {
+    setSavedViews(prev => [...prev, data[0]]);
+    setActiveViewId(data[0].id);
     setViewModalOpen(false);
-
     setNewViewName('');
-  };
+  }
+};
 
-  const deleteView = viewId => {
-    setSavedViews(prev =>
-      prev.filter(view => view.id !== viewId)
-    );
+const deleteView = async viewId => {
+  await supabase
+    .from('dashboard_views')
+    .delete()
+    .eq('id', viewId)
+    .eq('user_email', user?.email);
 
-    if (activeViewId === viewId) {
-      applyFullView();
-    }
-  };
+  setSavedViews(prev =>
+    prev.filter(view => view.id !== viewId)
+  );
+
+  if (activeViewId === viewId) {
+    applyFullView();
+  }
+};
 
   const filteredOrders = useMemo(() => {
     const orderRange = getDateRange(
@@ -604,7 +608,7 @@ useEffect(() => {
                       : 'bg-slate-100 text-slate-700'
                   }`}
                 >
-                  {view.name}
+                  {view.view_name}
                 </button>
 
                 <button
