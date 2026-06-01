@@ -234,12 +234,6 @@ async function loadViews() {
   setActiveViewId(view.id);
   setVisibleColumns(view.visible_columns || []);
 };
-
-  const applyView = view => {
-    setActiveViewId(view.id);
-    setVisibleColumns(view.columns);
-  };
-
  const saveCurrentView = async () => {
   if (!newViewName.trim()) return;
 
