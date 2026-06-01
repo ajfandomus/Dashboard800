@@ -45,35 +45,23 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Email
-            </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            className="h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-pink-400"
+            placeholder="Email"
+          />
 
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-pink-400"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Password
-            </label>
-
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-pink-400"
-              placeholder="••••••••"
-            />
-          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            className="h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-pink-400"
+            placeholder="Password"
+          />
 
           {errorMsg && (
             <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
