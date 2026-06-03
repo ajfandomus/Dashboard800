@@ -76,42 +76,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    checkUserAuth();
+useEffect(() => {
+  checkUserAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        setIsLoadingAuth(true);
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    setUser(session?.user || null);
+    setAuthError(null);
+    setIsLoadingAuth(false);
+  });
 
-        if (!session?.user) {
-          setUser(null);
-          setAuthError(null);
-          return;
-        }
-
-        const allowedUser = await validateAllowedUser(session.user);
-
-        setUser(allowedUser);
-
-        if (allowedUser) {
-          setAuthError(null);
-        }
-      } catch (err) {
-        console.error('Auth state error:', err);
-
-        setUser(null);
-        setAuthError(err.message || 'Authentication failed');
-      } finally {
-        setIsLoadingAuth(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
