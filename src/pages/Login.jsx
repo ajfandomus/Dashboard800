@@ -16,7 +16,6 @@ export default function Login() {
       window.history.replaceState({}, '', '/login');
     }
 
-    // Load Playfair Display font
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap';
     link.rel = 'stylesheet';
@@ -36,7 +35,8 @@ export default function Login() {
       return;
     }
 
-    window.location.href = '/';
+    // AuthContext onAuthStateChange validate ചെയ്ത് redirect ചെയ്യും
+    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -66,7 +66,6 @@ export default function Login() {
         background: 'linear-gradient(135deg, #7B002E 0%, #4A0019 60%, #2D000F 100%)',
       }}
     >
-      {/* Decorative blobs */}
       <div
         className="pointer-events-none fixed left-[-80px] top-[-80px] h-64 w-64 rounded-full opacity-20 blur-3xl"
         style={{ backgroundColor: '#ff6b9d' }}
@@ -77,7 +76,6 @@ export default function Login() {
       />
 
       <div className="relative w-full max-w-md">
-        {/* Card */}
         <div
           className="w-full rounded-3xl p-8 shadow-2xl sm:p-10"
           style={{
@@ -87,7 +85,6 @@ export default function Login() {
             ...glamourFont,
           }}
         >
-          {/* Logo */}
           <div className="mb-8 flex flex-col items-center text-center">
             <div className="mb-5">
               <img
@@ -107,7 +104,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Error message */}
           {errorMsg && (
             <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
@@ -115,7 +111,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Google button */}
           <button
             type="button"
             onClick={handleGoogleLogin}
@@ -140,14 +135,12 @@ export default function Login() {
             )}
           </button>
 
-          {/* Divider */}
           <div className="mb-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-slate-100" />
             <span className="text-xs font-medium uppercase tracking-widest text-slate-300">or</span>
             <div className="h-px flex-1 bg-slate-100" />
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-3">
             <input
               type="email"
@@ -193,7 +186,6 @@ export default function Login() {
           </form>
         </div>
 
-        {/* Footer */}
         <p
           className="mt-6 text-center text-xs text-rose-200 opacity-70"
           style={glamourFont}
