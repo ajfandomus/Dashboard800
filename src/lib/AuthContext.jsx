@@ -40,25 +40,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
 
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-
-      if (!session?.user) {
-        setUser(null);
-        setIsLoadingAuth(false);
-        return;
-      }
-
-      setIsLoadingAuth(true);
-      const allowedUser = await validateAllowedUser(session.user);
-      if (cancelled) return;
-      setUser(allowedUser);
-      setIsLoadingAuth(false);
-    };
-
-    init();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (cancelled) return;
 
