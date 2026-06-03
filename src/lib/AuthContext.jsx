@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
 
   const validateAllowedUser = async (loggedUser) => {
     if (!loggedUser?.email) return null;
-
     try {
       const { data, error } = await supabase
         .from('allowed_users')
@@ -28,7 +27,6 @@ export const AuthProvider = ({ children }) => {
         window.location.href = '/login?error=access_denied';
         return null;
       }
-
       return { ...loggedUser, role: data.role || 'user' };
     } catch (err) {
       await supabase.auth.signOut();
@@ -39,6 +37,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let cancelled = false;
+
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (!session?.user) {
+        setUser(null);
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      const allowedUser = await validateAllowedUser(session.user);
+      if (cancelled) return;
+      setUser(allowedUser);
+      setIsLoadingAuth(false);
+    };
+
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (cancelled) return;
