@@ -39,23 +39,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const fallback = setTimeout(() => {
       setIsLoadingAuth(false);
-    }, 5000);
+    }, 8000);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       clearTimeout(fallback);
-
-      if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
-        if (!session?.user) {
-          setUser(null);
-          setIsLoadingAuth(false);
-        } else {
-          setUser({ ...session.user, role: 'admin' });
-          setIsLoadingAuth(false);
-        }
-        return;
-      }
 
       if (!session?.user) {
         setUser(null);
@@ -64,6 +53,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      // Validate ALL events that have a user
       setIsLoadingAuth(true);
       const allowedUser = await validateAllowedUser(session.user);
       setUser(allowedUser);
