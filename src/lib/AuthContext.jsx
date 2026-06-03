@@ -13,6 +13,29 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
+  const validateAllowedUser = async loggedUser => {
+    if (!loggedUser?.email) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .select('*')
+      .eq('email', loggedUser.email)
+      .maybeSingle();
+
+    if (error || !data) {
+      await supabase.auth.signOut();
+      setAuthError('Access denied. Your email is not approved.');
+      return null;
+    }
+
+    return {
+      ...loggedUser,
+      role: data.role || 'user',
+    };
+  };
+
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
@@ -24,8 +47,18 @@ export const AuthProvider = ({ children }) => {
 
       if (error) throw error;
 
-      setUser(session?.user || null);
-      setAuthError(null);
+      if (!session?.user) {
+        setUser(null);
+        setAuthError(null);
+        return;
+      }
+
+      const allowedUser = await validateAllowedUser(session.user);
+
+      setUser(allowedUser);
+      setAuthError(
+        allowedUser ? null : 'Access denied. Your email is not approved.'
+      );
     } catch (err) {
       setAuthError(err.message);
       setUser(null);
@@ -39,8 +72,18 @@ export const AuthProvider = ({ children }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setIsLoadingAuth(true);
+
+      if (!session?.user) {
+        setUser(null);
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      const allowedUser = await validateAllowedUser(session.user);
+
+      setUser(allowedUser);
       setIsLoadingAuth(false);
     });
 

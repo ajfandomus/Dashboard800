@@ -6,6 +6,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async e => {
@@ -27,6 +28,23 @@ export default function Login() {
     window.location.href = '/';
   };
 
+  const handleGoogleLogin = async () => {
+    setErrorMsg('');
+    setGoogleLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-rose-50 p-4">
       <div className="w-full max-w-md rounded-[2rem] border border-pink-100 bg-white p-8 shadow-xl">
@@ -42,6 +60,33 @@ export default function Login() {
           <p className="mt-2 text-sm text-slate-500">
             Sign in to continue
           </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={googleLoading || loading}
+          className="mb-4 flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {googleLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting Google...
+            </>
+          ) : (
+            <>
+              <span className="text-lg font-bold text-blue-500">G</span>
+              Continue with Google
+            </>
+          )}
+        </button>
+
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium text-slate-400">
+            OR
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -71,7 +116,7 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || googleLoading}
             className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
           >
             {loading ? (
