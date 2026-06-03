@@ -41,6 +41,15 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
     }, 8000);
 
+    // Handle no-session on initial load immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        setUser(null);
+        setIsLoadingAuth(false);
+        clearTimeout(fallback);
+      }
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -53,7 +62,6 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Validate ALL events that have a user
       setIsLoadingAuth(true);
       const allowedUser = await validateAllowedUser(session.user);
       setUser(allowedUser);
