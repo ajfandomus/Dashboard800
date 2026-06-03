@@ -22,11 +22,16 @@ export const AuthProvider = ({ children }) => {
     isValidating.current = true;
 
     try {
-      const { data, error } = await supabase
-        .from('allowed_users')
-        .select('email, role')
-        .ilike('email', loggedUser.email)
-        .maybeSingle();
+      const { data, error } = await Promise.race([
+        supabase
+          .from('allowed_users')
+          .select('email, role')
+          .ilike('email', loggedUser.email)
+          .maybeSingle(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Query timeout')), 5000)
+        ),
+      ]);
 
       if (error || !data) {
         await supabase.auth.signOut();
@@ -35,15 +40,28 @@ export const AuthProvider = ({ children }) => {
       }
 
       return { ...loggedUser, role: data.role || 'user' };
+    } catch (err) {
+      console.error('validateAllowedUser error:', err.message);
+      await supabase.auth.signOut();
+      window.location.href = '/login?error=access_denied';
+      return null;
     } finally {
       isValidating.current = false;
     }
   };
 
   useEffect(() => {
+    // Hard fallback — never stay stuck loading forever
+    const fallback = setTimeout(() => {
+      console.warn('Auth fallback triggered');
+      setIsLoadingAuth(false);
+    }, 6000);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      clearTimeout(fallback);
+
       if (!session?.user) {
         setUser(null);
         setAuthError(null);
@@ -58,7 +76,10 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(fallback);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const logout = async () => {

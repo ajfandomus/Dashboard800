@@ -91,10 +91,10 @@ export default function Login() {
           <div className="mb-8 flex flex-col items-center text-center">
             <div className="mb-5">
               <img
-  src="https://www.800flower.ae/cdn/shop/files/800-flowers-logo-_-colors-1.png?v=1747173615&width=600"
-  alt="800Flower Logo"
-  className="h-8 w-auto object-contain sm:h-10"
-/>
+                src="https://www.800flower.ae/cdn/shop/files/800-flowers-logo-_-colors-1.png?v=1747173615&width=600"
+                alt="800Flower Logo"
+                className="h-14 w-auto object-contain sm:h-16"
+              />
             </div>
             <h1
               className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl"
