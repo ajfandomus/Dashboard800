@@ -10,18 +10,20 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [authError, setAuthError] = useState(null);
 
-  const validateAllowedUser = async loggedUser => {
+  const validateAllowedUser = async (loggedUser) => {
     if (!loggedUser?.email) return null;
 
     try {
-      const { data, error } = await supabase.functions.invoke('check-allowed-user', {
-        body: { email: loggedUser.email },
-      });
+      const { data, error } = await supabase
+        .from('allowed_users')
+        .select('email, role')
+        .ilike('email', loggedUser.email)
+        .maybeSingle();
 
-      if (error || !data?.allowed) {
+      if (error || !data) {
         await supabase.auth.signOut();
         window.location.href = '/login?error=access_denied';
         return null;
@@ -29,7 +31,7 @@ export const AuthProvider = ({ children }) => {
 
       return { ...loggedUser, role: data.role || 'user' };
     } catch (err) {
-      console.error('Edge function error:', err);
+      console.error('Validation error:', err);
       await supabase.auth.signOut();
       window.location.href = '/login?error=access_denied';
       return null;
@@ -37,23 +39,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const fallback = setTimeout(() => {
-      setIsLoadingAuth(false);
-    }, 8000);
+    let cancelled = false;
 
-    // Handle no-session on initial load immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
       if (!session?.user) {
         setUser(null);
         setIsLoadingAuth(false);
-        clearTimeout(fallback);
+        return;
       }
-    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      clearTimeout(fallback);
+      setIsLoadingAuth(true);
+      const allowedUser = await validateAllowedUser(session.user);
+      if (cancelled) return;
+      setUser(allowedUser);
+      setIsLoadingAuth(false);
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (cancelled) return;
 
       if (!session?.user) {
         setUser(null);
@@ -64,13 +73,14 @@ export const AuthProvider = ({ children }) => {
 
       setIsLoadingAuth(true);
       const allowedUser = await validateAllowedUser(session.user);
+      if (cancelled) return;
       setUser(allowedUser);
       if (allowedUser) setAuthError(null);
       setIsLoadingAuth(false);
     });
 
     return () => {
-      clearTimeout(fallback);
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, []);
