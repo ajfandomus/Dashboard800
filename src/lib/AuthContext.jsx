@@ -13,34 +13,26 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
- const validateAllowedUser = async loggedUser => {
-  if (!loggedUser?.email) return null;
+  const validateAllowedUser = async loggedUser => {
+    if (!loggedUser?.email) return null;
 
-  const { data, error } = await supabase
-    .from('allowed_users')
-    .select('email, role')
-    .ilike('email', loggedUser.email)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .select('email, role')
+      .ilike('email', loggedUser.email)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Allowed users error:', error);
-    setAuthError(error.message);
-    await supabase.auth.signOut();
-    return null;
-  }
+    if (error || !data) {
+      await supabase.auth.signOut();
+      window.location.href = '/login?error=access_denied';
+      return null;
+    }
 
-  if (!data) {
-    console.warn('Email not allowed:', loggedUser.email);
-    setAuthError('Access denied. Your email is not approved.');
-    await supabase.auth.signOut();
-    return null;
-  }
-
-  return {
-    ...loggedUser,
-    role: data.role || 'user',
+    return {
+      ...loggedUser,
+      role: data.role || 'user',
+    };
   };
-};
 
   const checkUserAuth = async () => {
     try {
@@ -60,15 +52,10 @@ export const AuthProvider = ({ children }) => {
       }
 
       const allowedUser = await validateAllowedUser(session.user);
-
       setUser(allowedUser);
-
-      if (allowedUser) {
-        setAuthError(null);
-      }
+      if (allowedUser) setAuthError(null);
     } catch (err) {
       console.error('Auth check error:', err);
-
       setAuthError(err.message || 'Authentication failed');
       setUser(null);
     } finally {
@@ -76,29 +63,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-useEffect(() => {
-  checkUserAuth();
+  useEffect(() => {
+    checkUserAuth();
 
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (!session?.user) {
-      setUser(null);
-      setAuthError(null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setUser(null);
+        setAuthError(null);
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      setIsLoadingAuth(true);
+      const allowedUser = await validateAllowedUser(session.user);
+      setUser(allowedUser);
+      if (allowedUser) setAuthError(null);
       setIsLoadingAuth(false);
-      return;
-    }
+    });
 
-    // Run the same allowed_users check here
-    setIsLoadingAuth(true);
-    const allowedUser = await validateAllowedUser(session.user);
-    setUser(allowedUser);
-    if (allowedUser) setAuthError(null);
-    setIsLoadingAuth(false);
-  });
-
-  return () => subscription.unsubscribe();
-}, []);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -131,10 +117,8 @@ useEffect(() => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-
   return context;
 };

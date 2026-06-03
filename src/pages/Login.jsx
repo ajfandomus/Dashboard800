@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Flower, Loader2 } from 'lucide-react';
 
@@ -8,6 +8,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'access_denied') {
+      setErrorMsg('Access denied. Your email is not approved to use this dashboard.');
+      // Clean the URL
+      window.history.replaceState({}, '', '/login');
+    }
+  }, []);
 
   const handleLogin = async e => {
     e.preventDefault();
@@ -29,25 +38,25 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-  setErrorMsg('');
-  setGoogleLoading(true);
+    setErrorMsg('');
+    setGoogleLoading(true);
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/`,
-      queryParams: {
-        prompt: 'select_account',
-        access_type: 'offline',
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          prompt: 'select_account',
+          access_type: 'offline',
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    setErrorMsg(error.message);
-    setGoogleLoading(false);
-  }
-};
+    if (error) {
+      setErrorMsg(error.message);
+      setGoogleLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-rose-50 p-4">
@@ -65,6 +74,12 @@ export default function Login() {
             Sign in to continue
           </p>
         </div>
+
+        {errorMsg && (
+          <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            {errorMsg}
+          </div>
+        )}
 
         <button
           type="button"
@@ -87,9 +102,7 @@ export default function Login() {
 
         <div className="mb-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium text-slate-400">
-            OR
-          </span>
+          <span className="text-xs font-medium text-slate-400">OR</span>
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
