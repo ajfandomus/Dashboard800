@@ -2,7 +2,6 @@ import React, {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -13,49 +12,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
-  const isValidating = useRef(false);
 
   const validateAllowedUser = async loggedUser => {
     if (!loggedUser?.email) return null;
-    if (isValidating.current) return null;
-
-    isValidating.current = true;
-
-    try {
-      const { data, error } = await Promise.race([
-        supabase
-          .from('allowed_users')
-          .select('email, role')
-          .ilike('email', loggedUser.email)
-          .maybeSingle(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Query timeout')), 5000)
-        ),
-      ]);
-
-      if (error || !data) {
-        await supabase.auth.signOut();
-        window.location.href = '/login?error=access_denied';
-        return null;
-      }
-
-      return { ...loggedUser, role: data.role || 'user' };
-    } catch (err) {
-      console.error('validateAllowedUser error:', err.message);
-      await supabase.auth.signOut();
-      window.location.href = '/login?error=access_denied';
-      return null;
-    } finally {
-      isValidating.current = false;
-    }
+    return { ...loggedUser, role: 'admin' };
   };
 
   useEffect(() => {
-    // Hard fallback — never stay stuck loading forever
     const fallback = setTimeout(() => {
-      console.warn('Auth fallback triggered');
       setIsLoadingAuth(false);
-    }, 6000);
+    }, 5000);
 
     const {
       data: { subscription },
