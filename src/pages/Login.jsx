@@ -23,20 +23,21 @@ export default function Login() {
   }, []);
 
   const handleLogin = async e => {
-  e.preventDefault();
-  setErrorMsg('');
-  setLoading(true);
+    e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    setErrorMsg(error.message);
+    if (error) {
+      setErrorMsg(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // AuthContext onAuthStateChange validate ചെയ്ത് redirect ചെയ്യും
     setLoading(false);
-    return;
-  }
-
-  window.location.href = '/';
-};
+  };
 
   const handleGoogleLogin = async () => {
     setErrorMsg('');
