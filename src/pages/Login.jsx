@@ -29,21 +29,25 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    setErrorMsg('');
-    setGoogleLoading(true);
+  setErrorMsg('');
+  setGoogleLoading(true);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      queryParams: {
+        prompt: 'select_account',
+        access_type: 'offline',
       },
-    });
+    },
+  });
 
-    if (error) {
-      setErrorMsg(error.message);
-      setGoogleLoading(false);
-    }
-  };
+  if (error) {
+    setErrorMsg(error.message);
+    setGoogleLoading(false);
+  }
+};
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-rose-50 p-4">
