@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Flower, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,7 +13,6 @@ export default function Login() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'access_denied') {
       setErrorMsg('Access denied. Your email is not approved to use this dashboard.');
-      // Clean the URL
       window.history.replaceState({}, '', '/login');
     }
   }, []);
@@ -62,13 +61,15 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-rose-50 p-4">
       <div className="w-full max-w-md rounded-[2rem] border border-pink-100 bg-white p-8 shadow-xl">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-100 text-pink-600">
-            <Flower className="h-7 w-7" />
-          </div>
 
-          <h1 className="text-3xl font-bold text-slate-900">
-            800Flower Dashboard
-          </h1>
+          {/* Logo */}
+          <div className="mx-auto mb-6 flex items-center justify-center">
+            <img
+              src="https://www.800flower.ae/cdn/shop/files/800-flowers-logo-_-colors-1.png?v=1747173615&width=600"
+              alt="800Flower Logo"
+              className="h-16 w-auto object-contain"
+            />
+          </div>
 
           <p className="mt-2 text-sm text-slate-500">
             Sign in to continue
