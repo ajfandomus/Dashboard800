@@ -10,59 +10,35 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-const validateAllowedUser = async (loggedUser) => {
-  if (!loggedUser?.email) return null;
+  const validateAllowedUser = async (loggedUser) => {
+    if (!loggedUser?.email) return null;
 
-  try {
-    const { data, error } = await supabase
-      .from('allowed_users')
-      .select('email, role')
-      .ilike('email', loggedUser.email)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('allowed_users')
+        .select('email, role')
+        .ilike('email', loggedUser.email)
+        .maybeSingle();
 
-    console.log('validate result:', { data, error, email: loggedUser.email }); // ← add
+      if (error || !data) {
+        await supabase.auth.signOut();
+        window.location.href = '/login?error=access_denied';
+        return null;
+      }
 
-    if (error || !data) {
-      console.log('access denied reason:', { error, data }); // ← add
+      return { ...loggedUser, role: data.role || 'user' };
+    } catch (err) {
       await supabase.auth.signOut();
       window.location.href = '/login?error=access_denied';
       return null;
     }
-
-    return { ...loggedUser, role: data.role || 'user' };
-  } catch (err) {
-    console.error('Validation error:', err);
-    await supabase.auth.signOut();
-    window.location.href = '/login?error=access_denied';
-    return null;
-  }
-};
+  };
 
   useEffect(() => {
     let cancelled = false;
-
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (cancelled) return;
-
-      if (!session?.user) {
-        setUser(null);
-        setIsLoadingAuth(false);
-        return;
-      }
-
-      setIsLoadingAuth(true);
-      const allowedUser = await validateAllowedUser(session.user);
-      if (cancelled) return;
-      setUser(allowedUser);
-      setIsLoadingAuth(false);
-    };
-
-    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (cancelled) return;
