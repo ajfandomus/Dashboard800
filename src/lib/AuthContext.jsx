@@ -13,39 +13,34 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  const validateAllowedUser = async loggedUser => {
-    if (!loggedUser?.email) {
-      return null;
-    }
+ const validateAllowedUser = async loggedUser => {
+  if (!loggedUser?.email) return null;
 
-    const { data, error } = await supabase
-      .from('allowed_users')
-      .select('*')
-      .eq('email', loggedUser.email)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from('allowed_users')
+    .select('email, role')
+    .ilike('email', loggedUser.email)
+    .maybeSingle();
 
-    if (error) {
-      console.error('Allowed users error:', error);
+  if (error) {
+    console.error('Allowed users error:', error);
+    setAuthError(error.message);
+    await supabase.auth.signOut();
+    return null;
+  }
 
-      setAuthError(error.message || 'Allowed users check failed');
+  if (!data) {
+    console.warn('Email not allowed:', loggedUser.email);
+    setAuthError('Access denied. Your email is not approved.');
+    await supabase.auth.signOut();
+    return null;
+  }
 
-      return null;
-    }
-
-    if (!data) {
-      await supabase.auth.signOut();
-
-      setAuthError('Access denied. Your email is not approved.');
-
-      return null;
-    }
-
-    return {
-      ...loggedUser,
-      role: data.role || 'user',
-      allowedUser: data,
-    };
+  return {
+    ...loggedUser,
+    role: data.role || 'user',
   };
+};
 
   const checkUserAuth = async () => {
     try {
