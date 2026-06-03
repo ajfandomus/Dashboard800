@@ -15,7 +15,25 @@ export const AuthProvider = ({ children }) => {
 
   const validateAllowedUser = async loggedUser => {
     if (!loggedUser?.email) return null;
-    return { ...loggedUser, role: 'admin' };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-allowed-user', {
+        body: { email: loggedUser.email },
+      });
+
+      if (error || !data?.allowed) {
+        await supabase.auth.signOut();
+        window.location.href = '/login?error=access_denied';
+        return null;
+      }
+
+      return { ...loggedUser, role: data.role || 'user' };
+    } catch (err) {
+      console.error('Edge function error:', err);
+      await supabase.auth.signOut();
+      window.location.href = '/login?error=access_denied';
+      return null;
+    }
   };
 
   useEffect(() => {
