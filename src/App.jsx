@@ -21,12 +21,18 @@ import Settings from '@/pages/Settings';
 import AllOrders from '@/pages/AllOrders';
 
 function ProtectedRoute() {
-  const { isAuthenticated, isLoadingAuth, authError } = useAuth();
+  const { isAuthenticated, isLoadingAuth, authError, logout } = useAuth();
 
   if (isLoadingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        Loading...
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
+        <p>Loading...</p>
+        <button
+          onClick={logout}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
+        >
+          Reset Login
+        </button>
       </div>
     );
   }
@@ -35,7 +41,10 @@ function ProtectedRoute() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3">
         <p className="text-red-600">{authError}</p>
-        <a href="/login" className="rounded-lg bg-slate-900 px-4 py-2 text-white">
+        <a
+          href="/login"
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
+        >
           Back to Login
         </a>
       </div>
