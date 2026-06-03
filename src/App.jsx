@@ -59,15 +59,7 @@ function ProtectedRoute() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
-
-  if (isLoadingAuth) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-400 text-sm">Loading...</p>
-      </div>
-    );
-  }
+  const { isAuthenticated } = useAuth();
 
   return (
     <Routes>
