@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,60 +13,34 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const isValidating = useRef(false);
 
   const validateAllowedUser = async loggedUser => {
     if (!loggedUser?.email) return null;
+    if (isValidating.current) return null;
 
-    const { data, error } = await supabase
-      .from('allowed_users')
-      .select('email, role')
-      .ilike('email', loggedUser.email)
-      .maybeSingle();
+    isValidating.current = true;
 
-    if (error || !data) {
-      await supabase.auth.signOut();
-      window.location.href = '/login?error=access_denied';
-      return null;
-    }
-
-    return {
-      ...loggedUser,
-      role: data.role || 'user',
-    };
-  };
-
-  const checkUserAuth = async () => {
     try {
-      setIsLoadingAuth(true);
+      const { data, error } = await supabase
+        .from('allowed_users')
+        .select('email, role')
+        .ilike('email', loggedUser.email)
+        .maybeSingle();
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (error) throw error;
-
-      if (!session?.user) {
-        setUser(null);
-        setAuthError(null);
-        return;
+      if (error || !data) {
+        await supabase.auth.signOut();
+        window.location.href = '/login?error=access_denied';
+        return null;
       }
 
-      const allowedUser = await validateAllowedUser(session.user);
-      setUser(allowedUser);
-      if (allowedUser) setAuthError(null);
-    } catch (err) {
-      console.error('Auth check error:', err);
-      setAuthError(err.message || 'Authentication failed');
-      setUser(null);
+      return { ...loggedUser, role: data.role || 'user' };
     } finally {
-      setIsLoadingAuth(false);
+      isValidating.current = false;
     }
   };
 
   useEffect(() => {
-    checkUserAuth();
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -106,7 +81,7 @@ export const AuthProvider = ({ children }) => {
         authChecked: !isLoadingAuth,
         logout,
         navigateToLogin,
-        checkUserAuth,
+        checkUserAuth: () => {},
         checkAppState: () => {},
       }}
     >
