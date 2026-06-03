@@ -13,30 +13,33 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [authError, setAuthError] = useState(null);
 
-  const validateAllowedUser = async (loggedUser) => {
-    if (!loggedUser?.email) return null;
+const validateAllowedUser = async (loggedUser) => {
+  if (!loggedUser?.email) return null;
 
-    try {
-      const { data, error } = await supabase
-        .from('allowed_users')
-        .select('email, role')
-        .ilike('email', loggedUser.email)
-        .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .select('email, role')
+      .ilike('email', loggedUser.email)
+      .maybeSingle();
 
-      if (error || !data) {
-        await supabase.auth.signOut();
-        window.location.href = '/login?error=access_denied';
-        return null;
-      }
+    console.log('validate result:', { data, error, email: loggedUser.email }); // ← add
 
-      return { ...loggedUser, role: data.role || 'user' };
-    } catch (err) {
-      console.error('Validation error:', err);
+    if (error || !data) {
+      console.log('access denied reason:', { error, data }); // ← add
       await supabase.auth.signOut();
       window.location.href = '/login?error=access_denied';
       return null;
     }
-  };
+
+    return { ...loggedUser, role: data.role || 'user' };
+  } catch (err) {
+    console.error('Validation error:', err);
+    await supabase.auth.signOut();
+    window.location.href = '/login?error=access_denied';
+    return null;
+  }
+};
 
   useEffect(() => {
     let cancelled = false;
