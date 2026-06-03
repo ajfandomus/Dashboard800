@@ -28,6 +28,17 @@ export const AuthProvider = ({ children }) => {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       clearTimeout(fallback);
 
+      if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
+        if (!session?.user) {
+          setUser(null);
+          setIsLoadingAuth(false);
+        } else {
+          setUser({ ...session.user, role: 'admin' });
+          setIsLoadingAuth(false);
+        }
+        return;
+      }
+
       if (!session?.user) {
         setUser(null);
         setAuthError(null);
