@@ -26,7 +26,7 @@ function ProtectedRoute() {
   if (isLoadingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        Loading...
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-800" />
       </div>
     );
   }
@@ -39,15 +39,21 @@ function ProtectedRoute() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-800" />
+      </div>
+    );
+  }
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/" replace /> : <Login />
-        }
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
       />
 
       <Route element={<ProtectedRoute />}>
