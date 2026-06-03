@@ -81,15 +81,23 @@ useEffect(() => {
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
-    setUser(session?.user || null);
-    setAuthError(null);
+  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!session?.user) {
+      setUser(null);
+      setAuthError(null);
+      setIsLoadingAuth(false);
+      return;
+    }
+
+    // Run the same allowed_users check here
+    setIsLoadingAuth(true);
+    const allowedUser = await validateAllowedUser(session.user);
+    setUser(allowedUser);
+    if (allowedUser) setAuthError(null);
     setIsLoadingAuth(false);
   });
 
-  return () => {
-    subscription.unsubscribe();
-  };
+  return () => subscription.unsubscribe();
 }, []);
 
   const logout = async () => {
