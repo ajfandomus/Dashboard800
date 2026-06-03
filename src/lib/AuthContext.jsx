@@ -24,15 +24,26 @@ export const AuthProvider = ({ children }) => {
       .eq('email', loggedUser.email)
       .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.error('Allowed users error:', error);
+
+      setAuthError(error.message || 'Allowed users check failed');
+
+      return null;
+    }
+
+    if (!data) {
       await supabase.auth.signOut();
+
       setAuthError('Access denied. Your email is not approved.');
+
       return null;
     }
 
     return {
       ...loggedUser,
       role: data.role || 'user',
+      allowedUser: data,
     };
   };
 
@@ -56,11 +67,14 @@ export const AuthProvider = ({ children }) => {
       const allowedUser = await validateAllowedUser(session.user);
 
       setUser(allowedUser);
-      setAuthError(
-        allowedUser ? null : 'Access denied. Your email is not approved.'
-      );
+
+      if (allowedUser) {
+        setAuthError(null);
+      }
     } catch (err) {
-      setAuthError(err.message);
+      console.error('Auth check error:', err);
+
+      setAuthError(err.message || 'Authentication failed');
       setUser(null);
     } finally {
       setIsLoadingAuth(false);
@@ -73,18 +87,30 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsLoadingAuth(true);
+      try {
+        setIsLoadingAuth(true);
 
-      if (!session?.user) {
+        if (!session?.user) {
+          setUser(null);
+          setAuthError(null);
+          return;
+        }
+
+        const allowedUser = await validateAllowedUser(session.user);
+
+        setUser(allowedUser);
+
+        if (allowedUser) {
+          setAuthError(null);
+        }
+      } catch (err) {
+        console.error('Auth state error:', err);
+
         setUser(null);
+        setAuthError(err.message || 'Authentication failed');
+      } finally {
         setIsLoadingAuth(false);
-        return;
       }
-
-      const allowedUser = await validateAllowedUser(session.user);
-
-      setUser(allowedUser);
-      setIsLoadingAuth(false);
     });
 
     return () => {
