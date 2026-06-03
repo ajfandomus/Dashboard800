@@ -28,7 +28,7 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 export default function AIAsk() {
   const [prompt, setPrompt] = useState('');
-const [sheetScope, setSheetScope] = useState('all');
+  const [sheetScope, setSheetScope] = useState('all');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -39,74 +39,12 @@ const [sheetScope, setSheetScope] = useState('all');
 
   const orders = useSheetData('orders');
   const products = useSheetData('products');
-const delivery = useSheetData('delivery');
-const allOrders = useSheetData('all-orders');
+  const delivery = useSheetData('delivery');
+  const allOrders = useSheetData('all-orders');
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
-
-  const dataSummary = useMemo(() => {
-    const s = {};
-
-    if (sheetScope === 'all' || sheetScope === 'orders') {
-      const byStatus = {};
-      const byDate = {};
-      const byProduct = {};
-      const byFlorist = {};
-
-      orders.data.forEach(o => {
-        const status = o.status || o.delivery_status || 'Unknown';
-        byStatus[status] = (byStatus[status] || 0) + 1;
-
-        const date = o.order_date
-          ? String(o.order_date).split(' ')[0]
-          : 'Unknown';
-
-        byDate[date] = (byDate[date] || 0) + 1;
-
-        const prods = String(o.product || '')
-          .split(',')
-          .map(p => p.trim())
-          .filter(Boolean);
-
-        prods.forEach(p => {
-          byProduct[p] = (byProduct[p] || 0) + 1;
-        });
-
-        if (o.florist) {
-          byFlorist[o.florist] = (byFlorist[o.florist] || 0) + 1;
-        }
-      });
-
-      s.orders = {
-        totalOrders: orders.data.length,
-        byStatus,
-        byDate,
-        byProduct,
-        byFlorist,
-      };
-    }
-
-    if (sheetScope === 'all' || sheetScope === 'products') {
-      const top10 = [...products.data]
-        .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-        .slice(0, 10)
-        .map(p => ({
-          name: p.name,
-          sales: p.sales_count,
-          category: p.category,
-          trend: p.trend,
-          last_order_date: p.last_order_date,
-        }));
-
-      s.products = {
-        count: products.data.length,
-        top10,
-      };
-    }
-
-    return s;
-  }, [sheetScope, orders.data, products.data]);
 
   const handleVoice = () => {
     const SpeechRecognition =
@@ -124,13 +62,11 @@ const allOrders = useSheetData('all-orders');
     }
 
     const recognition = new SpeechRecognition();
-
     recognition.lang = 'en-US';
     recognition.interimResults = false;
 
     recognition.onresult = e => {
       const transcript = e.results[0][0].transcript;
-
       setPrompt(prev => (prev ? `${prev} ${transcript}` : transcript));
       setIsListening(false);
     };
@@ -144,189 +80,119 @@ const allOrders = useSheetData('all-orders');
 
     recognitionRef.current = recognition;
     recognition.start();
-
     setIsListening(true);
   };
 
   const handleAsk = async () => {
     if (!prompt.trim() || isLoading) return;
 
-  if (!GEMINI_API_KEY) {
-  toast.error('Missing Gemini API key. Add VITE_GEMINI_API_KEY in .env');
-  return;
-}
+    if (!GEMINI_API_KEY) {
+      toast.error('Missing Gemini API key. Add VITE_GEMINI_API_KEY in .env');
+      return;
+    }
 
     const userMsg = prompt.trim();
     setPrompt('');
 
-    const newMessages = [
-      ...messages,
-      {
-        role: 'user',
-        content: userMsg,
-      },
-    ];
-
+    const newMessages = [...messages, { role: 'user', content: userMsg }];
     setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      const toLines = (rows, fields) =>
-        `${fields.join('|')}\n${rows
-          .map(row => fields.map(field => row[field] ?? '').join('|'))
-          .join('\n')}`;
-
-      const orderFields = [
-        'order_date',
-        'order_id',
-        'customer_name',
-        'product',
-        'quantity',
-        'status',
-        'delivery_status',
-        'florist',
-        'city',
-        'payment',
-      ];
-
-      const productFields = [
-        'name',
-        'category',
-        'sales_count',
-        'order_count',
-        'trend',
-        'last_order_date',
-      ];
-
       const sections = [];
-
-sections.push(`
-=== ORDERS ===
-${JSON.stringify(orders.data.slice(0, 1000))}
-`);
-
-sections.push(`
-=== PRODUCTS ===
-${JSON.stringify(products.data.slice(0, 1000))}
-`);
-
-sections.push(`
-=== DELIVERY ===
-${JSON.stringify(delivery.data.slice(0, 1000))}
-`);
-
-sections.push(`
-=== ALL SHOPIFY ORDERS ===
-${JSON.stringify(allOrders.data.slice(0, 1000))}
-`);
 
       if ((sheetScope === 'all' || sheetScope === 'orders') && orders.data.length) {
         sections.push(
-          `=== ORDERS (${orders.data.length} rows) ===\n${toLines(
-            orders.data,
-            orderFields
-          )}`
+          `=== ORDERS (${orders.data.length} rows) ===\n${JSON.stringify(orders.data.slice(0, 500))}`
         );
       }
 
-      if (
-        (sheetScope === 'all' || sheetScope === 'products') &&
-        products.data.length
-      ) {
+      if ((sheetScope === 'all' || sheetScope === 'products') && products.data.length) {
         sections.push(
-          `=== PRODUCTS (${products.data.length} rows) ===\n${toLines(
-            products.data,
-            productFields
-          )}`
+          `=== PRODUCTS (${products.data.length} rows) ===\n${JSON.stringify(products.data.slice(0, 500))}`
         );
       }
 
-   const systemPrompt = `
-You are the AI business analyst for 800Flower.
+      if ((sheetScope === 'all' || sheetScope === 'delivery') && delivery.data.length) {
+        sections.push(
+          `=== DELIVERY (${delivery.data.length} rows) ===\n${JSON.stringify(delivery.data.slice(0, 500))}`
+        );
+      }
 
-You have access to ALL dashboard data:
+      if ((sheetScope === 'all' || sheetScope === 'allOrders') && allOrders.data.length) {
+        sections.push(
+          `=== ALL SHOPIFY ORDERS (${allOrders.data.length} rows) ===\n${JSON.stringify(allOrders.data.slice(0, 500))}`
+        );
+      }
 
-- Orders
-- Products
-- Delivery
-- Shopify Orders
+      const systemPrompt = `
+You are the AI business analyst for 800Flower, a luxury flower delivery business in the UAE.
+
+You have access to the following dashboard data:
+- Orders (florist orders, status, delivery info)
+- Products (flower products, sales counts, trends)
+- Delivery (delivery tracking data)
+- Shopify Orders (all online orders)
 
 Rules:
-
 1. Search all datasets before answering.
 2. If user asks about a flower/product, search products and orders.
 3. Calculate totals from actual data.
-4. Never guess.
+4. Never guess or make up numbers.
 5. If data exists, provide exact numbers.
 6. Show trends and insights when possible.
 7. Keep answers short and business-focused.
 8. Use all provided data before saying "not found".
+9. Format numbers clearly (e.g. AED 1,234).
+10. Use bullet points and tables where helpful.
 
 === DASHBOARD DATA ===
 
 ${sections.join('\n\n')}
 `;
 
-     const res = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
-          role: 'user',
-          parts: [
-            {
-              text: `${systemPrompt}
-
-User Question:
-${userMsg}`
-            }
-          ]
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: `${systemPrompt}\n\nUser Question:\n${userMsg}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1500,
+            },
+          }),
         }
-      ],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1200,
+      );
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData?.error?.message || `Gemini API Error ${res.status}`);
       }
-    }),
-  }
-);
 
-if (!res.ok) {
-  const errData = await res.json();
-  throw new Error(
-    errData?.error?.message || `Gemini API Error ${res.status}`
-  );
-}
+      const data = await res.json();
+      const text =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
 
-const data = await res.json();
-
-const text =
-  data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-  'No response received.';
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: text,
-        },
-      ]);
+      setMessages(prev => [...prev, { role: 'assistant', content: text }]);
     } catch (err) {
       console.error(err);
-
       toast.error(`Failed to get AI response: ${err.message}`);
-
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content:
-            '⚠️ Sorry, I could not process that request. Please try again.',
+          content: '⚠️ Sorry, I could not process that request. Please try again.',
         },
       ]);
     }
@@ -338,7 +204,6 @@ const text =
     navigator.clipboard.writeText(text);
     setCopied(index);
     toast.success('Copied!');
-
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -368,16 +233,16 @@ const text =
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Data Scope
                 </label>
-
                 <Select value={sheetScope} onValueChange={setSheetScope}>
                   <SelectTrigger className="border-0 bg-secondary/60">
                     <SelectValue />
                   </SelectTrigger>
-
                   <SelectContent>
                     <SelectItem value="all">All Data</SelectItem>
                     <SelectItem value="orders">Orders</SelectItem>
                     <SelectItem value="products">Products</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
+                    <SelectItem value="allOrders">Shopify Orders</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -386,23 +251,18 @@ const text =
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Your Question
                 </label>
-
                 <div className="relative">
                   <Textarea
                     value={prompt}
-                    onChange={event => setPrompt(event.target.value)}
+                    onChange={e => setPrompt(e.target.value)}
                     placeholder="Ask anything about your flower business..."
                     className="min-h-[100px] resize-none border-0 bg-secondary/60 pr-10"
-                    onKeyDown={event => {
-                      if (
-                        event.key === 'Enter' &&
-                        (event.metaKey || event.ctrlKey)
-                      ) {
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                         handleAsk();
                       }
                     }}
                   />
-
                   <button
                     onClick={handleVoice}
                     className={`absolute bottom-2 right-2 rounded-md p-1.5 transition-colors ${
@@ -419,7 +279,6 @@ const text =
                     )}
                   </button>
                 </div>
-
                 {isListening && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
                     <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-red-500" />
@@ -465,7 +324,6 @@ const text =
                 <Flower className="h-3.5 w-3.5 text-primary" />
                 Suggested Questions
               </p>
-
               <div className="space-y-1.5">
                 {suggestions.map((suggestion, index) => (
                   <button
@@ -489,11 +347,9 @@ const text =
                 {messages.length === 0 && !isLoading ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className="mb-4 text-5xl">🌸</div>
-
                     <h3 className="mb-2 text-lg font-semibold text-foreground">
                       Your AI Business Analyst
                     </h3>
-
                     <p className="max-w-sm text-sm text-muted-foreground">
                       Ask anything about your orders and products. Use the mic
                       🎤 to speak your question.
@@ -505,9 +361,7 @@ const text =
                       <div
                         key={index}
                         className={`flex ${
-                          message.role === 'user'
-                            ? 'justify-end'
-                            : 'justify-start'
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
                         }`}
                       >
                         {message.role === 'assistant' && (
@@ -515,7 +369,6 @@ const text =
                             <Sparkles className="h-3.5 w-3.5 text-primary" />
                           </div>
                         )}
-
                         <div
                           className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                             message.role === 'user'
@@ -526,11 +379,8 @@ const text =
                           {message.role === 'assistant' ? (
                             <div className="prose prose-sm max-w-none text-foreground">
                               <ReactMarkdown>{message.content}</ReactMarkdown>
-
                               <button
-                                onClick={() =>
-                                  handleCopy(message.content, index)
-                                }
+                                onClick={() => handleCopy(message.content, index)}
                                 className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                               >
                                 {copied === index ? (
@@ -558,7 +408,6 @@ const text =
                         <div className="mr-2 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                           <Sparkles className="h-3.5 w-3.5 text-primary" />
                         </div>
-
                         <div className="rounded-2xl rounded-tl-sm bg-secondary/60 px-4 py-3">
                           <div className="flex h-4 items-center gap-1">
                             <span className="h-2 w-2 animate-bounce rounded-full bg-primary/60" />
@@ -574,7 +423,6 @@ const text =
                         </div>
                       </div>
                     )}
-
                     <div ref={bottomRef} />
                   </>
                 )}
