@@ -475,10 +475,25 @@ export default function Orders() {
       {/* ORDERS TABLE */}
       <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-semibold text-slate-900">Orders List</p>
-            <p className="text-xs text-slate-400">{filteredOrders.length} records · show, hide &amp; reorder columns</p>
-          </div>
+         <div>
+  <p className="font-semibold text-slate-900">Orders List</p>
+
+  <p className="text-xs text-slate-400">
+    {filteredOrders.length} records synced · {
+      deliveryDateFilter === 'today'
+        ? `Today - ${new Date().toLocaleDateString('en-GB')}`
+        : deliveryDateFilter === 'yesterday'
+        ? `Yesterday - ${new Date(Date.now() - 86400000).toLocaleDateString('en-GB')}`
+        : deliveryDateFilter === 'custom' && deliveryFromDate && deliveryToDate
+        ? `${new Date(deliveryFromDate).toLocaleDateString('en-GB')} to ${new Date(deliveryToDate).toLocaleDateString('en-GB')}`
+        : deliveryDateFilter === 'week'
+        ? 'Last 7 Days'
+        : deliveryDateFilter === 'month'
+        ? 'This Month'
+        : 'All Dates'
+    }
+  </p>
+</div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={applyFullView}
