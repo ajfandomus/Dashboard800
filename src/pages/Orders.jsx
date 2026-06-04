@@ -32,6 +32,56 @@ const columns = [
   { key: 'payment',          label: 'Channel' },
 ];
 
+// ─── colored cell renderers (matches Google Sheet color coding) ───────────────
+
+function PrintStatusCell({ value }) {
+  const v = String(value || '').trim();
+  if (!v || v === 'N/A' || v === 'n/a' || v === '-')
+    return <span className="text-slate-400">-</span>;
+  if (v.toUpperCase() === 'PRINTED')
+    return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">PRINTED</span>;
+  if (v === 'Not Printed')
+    return <span className="inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Not Printed</span>;
+  return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
+}
+
+function DeliveryStatusCell({ value }) {
+  const v = String(value || '').trim();
+  if (!v || v === 'N/A' || v === 'n/a' || v === '-')
+    return <span className="text-slate-400">-</span>;
+  if (v === 'Dispatched')
+    return <span className="inline-flex items-center rounded-md bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">Dispatched</span>;
+  if (v === 'Delivered')
+    return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Delivered</span>;
+  if (v === 'No Driver')
+    return <span className="inline-flex items-center rounded-md bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">No Driver</span>;
+  if (v === 'Not Needed')
+    return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Not Needed</span>;
+  return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
+}
+
+function FloristCell({ value }) {
+  const v = String(value || '').trim();
+  if (!v || v === 'N/A' || v === 'n/a' || v === '-' || v === '—')
+    return <span className="text-slate-400">-</span>;
+  return <span className="text-sm text-slate-800">{v}</span>;
+}
+
+// ─── enhanced columns with renderers ─────────────────────────────────────────
+const enhancedColumns = columns.map(col => {
+  if (col.key === 'print_status')    return { ...col, render: v => <PrintStatusCell value={v} /> };
+  if (col.key === 'delivery_status') return { ...col, render: v => <DeliveryStatusCell value={v} /> };
+  if (col.key === 'florist')         return { ...col, render: v => <FloristCell value={v} /> };
+  // default: replace N/A with dash
+  return {
+    ...col,
+    render: v => {
+      const d = (!v || String(v) === 'N/A' || String(v) === 'n/a') ? '-' : v;
+      return d === '-' ? <span className="text-slate-400">-</span> : <span>{d}</span>;
+    },
+  };
+});
+
 // ─── date helpers ─────────────────────────────────────────────────────────────
 function parseOrderDate(value) {
   if (!value) return null;
@@ -215,7 +265,7 @@ export default function Orders() {
 
   // ── column helpers ──────────────────────────────────────────────────────────
   const displayedColumns = useMemo(() =>
-    visibleColumns.map(k => columns.find(c => c.key === k)).filter(Boolean),
+    visibleColumns.map(k => enhancedColumns.find(c => c.key === k)).filter(Boolean),
   [visibleColumns]);
 
   const popupColumns = useMemo(() =>
