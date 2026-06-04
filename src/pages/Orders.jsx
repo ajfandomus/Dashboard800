@@ -192,7 +192,7 @@ export default function Orders() {
   // column management
   const [columnMenuOpen, setColumnMenuOpen]       = useState(false);
   const [dragColumnKey, setDragColumnKey]         = useState(null);
-  const [visibleColumns, setVisibleColumns]       = useState(columns.map(c => c.key));
+  const [visibleColumns, setVisibleColumns]       = useState(columns.map(c => c.key).filter(k => k !== 'address'));
 
   // saved views
   const [savedViews, setSavedViews]               = useState([]);
