@@ -648,6 +648,122 @@ export default function Orders() {
         <DataTable columns={displayedColumns} data={filteredOrders} pageSize={10} />
       </div>
 
+      {/* ── OPS SUMMARY PANELS ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+        {/* Online Order Count by Delivery Date */}
+        <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Online Order Count — Ops</p>
+            <p className="text-[11px] text-slate-400">800F orders grouped by delivery date</p>
+          </div>
+          <div className="p-4 space-y-1">
+            {(() => {
+              const map = {};
+              filteredOrders
+                .filter(o => o.order_id?.startsWith('800F'))
+                .forEach(o => {
+                  const d = o.delivery_date || 'Unknown';
+                  map[d] = (map[d] || 0) + 1;
+                });
+              const entries = Object.entries(map).sort((a,b) => a[0].localeCompare(b[0]));
+              if (!entries.length) return <p className="text-xs text-slate-400 py-2">No online orders</p>;
+              return entries.map(([date, count]) => (
+                <div key={date} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                  <span className="text-xs text-slate-600">{date}</span>
+                  <span className="text-sm font-bold text-slate-900">{count}</span>
+                </div>
+              ));
+            })()}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-1">
+              <span className="text-xs font-semibold text-slate-700">Total</span>
+              <span className="text-sm font-bold text-rose-600">
+                {filteredOrders.filter(o => o.order_id?.startsWith('800F')).length}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Logistics Order Status */}
+        <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Logistics Order Status</p>
+            <p className="text-[11px] text-slate-400">Current delivery pipeline</p>
+          </div>
+          <div className="p-4 space-y-1">
+            {(() => {
+              const o = filteredOrders;
+              const floristPrepare = o.filter(x => x.florist === 'Not Ready' || !x.florist || x.delivery_status === 'No Driver').length;
+              const readyWarehouse = o.filter(x => x.florist && x.florist !== 'Not Ready' && (!x.delivery_status || x.delivery_status === 'No Driver')).length;
+              const outDelivery    = o.filter(x => x.delivery_status === 'Dispatched').length;
+              const delivered      = o.filter(x => x.delivery_status === 'Delivered').length;
+              const riders3pl      = o.filter(x => x.order_id?.startsWith('3PL')).length;
+              const shopifyTotal   = o.filter(x => x.order_id?.startsWith('800F')).length;
+              const nonShopify     = o.length - shopifyTotal;
+
+              const rows = [
+                { label: 'Florist to Prepare', value: floristPrepare, color: 'text-orange-600' },
+                { label: 'Ready at Warehouse',  value: readyWarehouse, color: 'text-blue-600' },
+                { label: 'Out for Delivery',    value: outDelivery,    color: 'text-amber-600' },
+                { label: 'Delivered',            value: delivered,      color: 'text-green-600' },
+                { label: '3PL Riders',           value: riders3pl,      color: 'text-violet-600' },
+                { label: 'Non 800F Online',      value: -nonShopify,    color: 'text-rose-400', italic: true },
+              ];
+
+              return rows.map(r => (
+                <div key={r.label} className={`flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0 ${r.italic ? 'opacity-70' : ''}`}>
+                  <span className={`text-xs ${r.italic ? 'italic text-slate-500' : 'text-slate-700'}`}>{r.label}</span>
+                  <span className={`text-sm font-bold ${r.color}`}>{r.italic ? `(${Math.abs(r.value)})` : r.value}</span>
+                </div>
+              ));
+            })()}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-1">
+              <span className="text-xs font-semibold text-slate-700">Total Orders (Web+Pay+3PL)</span>
+              <span className="text-sm font-bold text-rose-600">{filteredOrders.length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Orders Received On */}
+        <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Orders Received On</p>
+            <p className="text-[11px] text-slate-400">By channel / source</p>
+          </div>
+          <div className="p-4 space-y-1">
+            {(() => {
+              const o = filteredOrders;
+              const online       = o.filter(x => x.order_id?.startsWith('800F')).length;
+              const paymentLinks = o.filter(x => x.order_id?.startsWith('CDM') && String(x.product||'').toLowerCase().includes('invoiceninja')).length;
+              const platforms    = o.filter(x => x.order_id?.startsWith('3PL')).length;
+              const marketing    = o.filter(x => x.order_id?.startsWith('CDM') && !String(x.product||'').toLowerCase().includes('invoiceninja')).length;
+              const weekly       = 0; // would need sheet column
+              const events       = 0;
+
+              const rows = [
+                { label: 'Online Sales',              value: online,       color: 'text-blue-600' },
+                { label: 'Payment Links',             value: paymentLinks, color: 'text-violet-600' },
+                { label: 'Delivery Platforms (3PL)',  value: platforms,    color: 'text-teal-600' },
+                { label: 'Marketing, Shop & Ops',     value: -marketing,   color: 'text-rose-400', italic: true },
+                { label: 'Weekly',                    value: weekly,       color: 'text-slate-400' },
+                { label: 'Events, Pshoot, Influ',     value: events,       color: 'text-slate-400' },
+              ];
+
+              return rows.map(r => (
+                <div key={r.label} className={`flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0 ${r.italic ? 'opacity-70' : ''}`}>
+                  <span className={`text-xs ${r.italic ? 'italic text-slate-500' : 'text-slate-700'}`}>{r.label}</span>
+                  <span className={`text-sm font-bold ${r.color}`}>{r.italic ? `(${Math.abs(r.value)})` : r.value}</span>
+                </div>
+              ));
+            })()}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-1">
+              <span className="text-xs font-semibold text-slate-700">Total Orders</span>
+              <span className="text-sm font-bold text-rose-600">{filteredOrders.length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── CHARTS ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ChartCard title="Orders by Delivery Status" type="pie" data={statusChart}
