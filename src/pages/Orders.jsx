@@ -20,9 +20,9 @@ const columns = [
   { key: 'customer_name',    label: 'Customer' },
   { key: 'product',          label: 'Product' },
   { key: 'quantity',         label: 'Qty',          format: 'number' },
-  { key: 'print_status',     label: 'Print Status' },
-  { key: 'florist',          label: 'Florist' },
-  { key: 'delivery_status',  label: 'Delivery' },
+  { key: 'print_status',     label: 'Print Status',  format: 'colored' },
+  { key: 'florist',          label: 'Florist',        format: 'colored' },
+  { key: 'delivery_status',  label: 'Delivery',       format: 'colored' },
   { key: 'address',          label: 'Address' },
   { key: 'order_date',       label: 'Order Date' },
   { key: 'florist_time',     label: 'Florist Time' },
@@ -31,6 +31,70 @@ const columns = [
   { key: 'dispatch_time',    label: 'Dispatch' },
   { key: 'payment',          label: 'Channel' },
 ];
+
+// ─── cell color config ────────────────────────────────────────────────────────
+function getCellStyle(key, value) {
+  const v = String(value || '').trim();
+
+  if (key === 'print_status') {
+    if (v === 'PRINTED')      return 'bg-green-100 text-green-800 font-semibold';
+    if (v === 'Not Printed')  return 'bg-red-100 text-red-700 font-semibold';
+    return '';
+  }
+
+  if (key === 'florist') {
+    if (!v || v === '-' || v === 'N/A') return '';
+    if (v === 'Not Ready')  return 'bg-orange-100 text-orange-700 font-semibold';
+    // named florist — green
+    return 'bg-green-100 text-green-800 font-semibold';
+  }
+
+  if (key === 'delivery_status') {
+    if (v === 'Dispatched')   return 'bg-yellow-100 text-yellow-800 font-semibold';
+    if (v === 'No Driver')    return 'bg-red-100 text-red-600 font-semibold';
+    if (v === 'Not Needed')   return 'bg-emerald-100 text-emerald-700 font-semibold';
+    if (v === 'Delivered')    return 'bg-blue-100 text-blue-700 font-semibold';
+    return '';
+  }
+
+  return '';
+}
+
+// ─── colored cell renderer ────────────────────────────────────────────────────
+function ColoredCell({ columnKey, value }) {
+  const display = !value || value === 'N/A' || value === 'n/a' ? '-' : value;
+  const cls = getCellStyle(columnKey, display);
+
+  if (display === '-' || !cls) {
+    return <span className="text-slate-400">{display}</span>;
+  }
+
+  return (
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs ${cls}`}>
+      {display}
+    </span>
+  );
+}
+
+// ─── enhanced columns with renderers ─────────────────────────────────────────
+const enhancedColumns = columns.map(col => {
+  if (col.format === 'colored') {
+    return {
+      ...col,
+      render: (value) => <ColoredCell columnKey={col.key} value={value} />,
+    };
+  }
+  // for non-colored columns, still replace N/A with dash
+  return {
+    ...col,
+    render: col.render || ((value) => {
+      const display = !value || value === 'N/A' || value === 'n/a' ? '-' : value;
+      return display === '-'
+        ? <span className="text-slate-400">-</span>
+        : <span>{display}</span>;
+    }),
+  };
+});
 
 // ─── date helpers ─────────────────────────────────────────────────────────────
 function parseOrderDate(value) {
@@ -72,25 +136,20 @@ function getDateRange(type, from, to) {
 }
 
 const DATE_BTNS = [
-  { key: 'all', label: 'All' },
-  { key: 'today', label: 'Today' },
+  { key: 'all',       label: 'All' },
+  { key: 'today',     label: 'Today' },
   { key: 'yesterday', label: 'Yesterday' },
-  { key: 'week', label: '7 Days' },
-  { key: 'month', label: 'Month' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'week',      label: '7 Days' },
+  { key: 'month',     label: 'Month' },
+  { key: 'custom',    label: 'Custom' },
 ];
 
-// ─── small reusable pieces ────────────────────────────────────────────────────
 function DatePill({ active, onClick, label }) {
   return (
-    <button
-      onClick={onClick}
+    <button onClick={onClick}
       className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
-        active
-          ? 'bg-rose-500 text-white shadow-sm shadow-rose-200'
-          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-      }`}
-    >
+        active ? 'bg-rose-500 text-white shadow-sm shadow-rose-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+      }`}>
       {label}
     </button>
   );
@@ -99,11 +158,8 @@ function DatePill({ active, onClick, label }) {
 function FilterChip({ label, value, options, onChange }) {
   return (
     <div className="relative">
-      <select
-        value={value || 'all'}
-        onChange={e => onChange(e.target.value)}
-        className="h-9 appearance-none rounded-full border border-slate-200 bg-white pl-3 pr-7 text-xs font-medium text-slate-700 shadow-sm outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 cursor-pointer"
-      >
+      <select value={value || 'all'} onChange={e => onChange(e.target.value)}
+        className="h-9 appearance-none rounded-full border border-slate-200 bg-white pl-3 pr-7 text-xs font-medium text-slate-700 shadow-sm outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 cursor-pointer">
         <option value="all">All {label}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -116,26 +172,23 @@ function FilterChip({ label, value, options, onChange }) {
 export default function Orders() {
   const { user } = useAuth();
 
-  // filters
-  const [filters, setFilters]                     = useState({});
-  const [dateFilter, setDateFilter]               = useState('today');
-  const [fromDate, setFromDate]                   = useState('');
-  const [toDate, setToDate]                       = useState('');
+  const [filters, setFilters]                       = useState({});
+  const [dateFilter, setDateFilter]                 = useState('today');
+  const [fromDate, setFromDate]                     = useState('');
+  const [toDate, setToDate]                         = useState('');
   const [deliveryDateFilter, setDeliveryDateFilter] = useState('today');
-  const [deliveryFromDate, setDeliveryFromDate]   = useState('');
-  const [deliveryToDate, setDeliveryToDate]       = useState('');
-  const [filtersOpen, setFiltersOpen]             = useState(false);
+  const [deliveryFromDate, setDeliveryFromDate]     = useState('');
+  const [deliveryToDate, setDeliveryToDate]         = useState('');
+  const [filtersOpen, setFiltersOpen]               = useState(false);
 
-  // column management
-  const [columnMenuOpen, setColumnMenuOpen]       = useState(false);
-  const [dragColumnKey, setDragColumnKey]         = useState(null);
-  const [visibleColumns, setVisibleColumns]       = useState(columns.map(c => c.key));
+  const [columnMenuOpen, setColumnMenuOpen]         = useState(false);
+  const [dragColumnKey, setDragColumnKey]           = useState(null);
+  const [visibleColumns, setVisibleColumns]         = useState(columns.map(c => c.key));
 
-  // saved views
-  const [savedViews, setSavedViews]               = useState([]);
-  const [activeViewId, setActiveViewId]           = useState('default');
-  const [viewModalOpen, setViewModalOpen]         = useState(false);
-  const [newViewName, setNewViewName]             = useState('');
+  const [savedViews, setSavedViews]                 = useState([]);
+  const [activeViewId, setActiveViewId]             = useState('default');
+  const [viewModalOpen, setViewModalOpen]           = useState(false);
+  const [newViewName, setNewViewName]               = useState('');
 
   const setPageData = useDashboardStore(s => s.setPageData);
   const { data, allData, isLoading, error, refetch } = useSheetData('orders', { filters });
@@ -150,9 +203,39 @@ export default function Orders() {
     if (data) setSavedViews(data);
   }
 
+  // ── defined first so deleteView can safely reference it ────────────────────
+  const applyFullView = () => {
+    setActiveViewId('default');
+    setVisibleColumns(columns.map(c => c.key));
+  };
+
+  const applyView = v => {
+    setActiveViewId(v.id);
+    setVisibleColumns(v.visible_columns || []);
+  };
+
+  const saveCurrentView = async () => {
+    if (!newViewName.trim() || !user?.email) return;
+    const { data } = await supabase.from('dashboard_views')
+      .insert({ page_name: 'orders', view_name: newViewName.trim(), visible_columns: visibleColumns, active_view: false, user_email: user.email })
+      .select();
+    if (data?.length) {
+      setSavedViews(p => [...p, data[0]]);
+      setActiveViewId(data[0].id);
+      setNewViewName('');
+      setViewModalOpen(false);
+    }
+  };
+
+  const deleteView = async id => {
+    await supabase.from('dashboard_views').delete().eq('id', id).eq('user_email', user?.email);
+    setSavedViews(p => p.filter(v => v.id !== id));
+    if (activeViewId === id) applyFullView();
+  };
+
   // ── column helpers ──────────────────────────────────────────────────────────
   const displayedColumns = useMemo(() =>
-    visibleColumns.map(k => columns.find(c => c.key === k)).filter(Boolean),
+    visibleColumns.map(k => enhancedColumns.find(c => c.key === k)).filter(Boolean),
   [visibleColumns]);
 
   const popupColumns = useMemo(() =>
@@ -179,23 +262,6 @@ export default function Orders() {
       c.splice(fi, 1); c.splice(ti, 0, dragColumnKey);
       return c;
     });
-  };
-
-  const applyView      = v => { setActiveViewId(v.id); setVisibleColumns(v.visible_columns || []); };
-  const applyFullView  = () => { setActiveViewId('default'); setVisibleColumns(columns.map(c => c.key)); };
-
-  const saveCurrentView = async () => {
-    if (!newViewName.trim() || !user?.email) return;
-    const { data } = await supabase.from('dashboard_views')
-      .insert({ page_name: 'orders', view_name: newViewName.trim(), visible_columns: visibleColumns, active_view: false, user_email: user.email })
-      .select();
-    if (data?.length) { setSavedViews(p => [...p, data[0]]); setActiveViewId(data[0].id); setNewViewName(''); setViewModalOpen(false); }
-  };
-
-  const deleteView = async id => {
-    await supabase.from('dashboard_views').delete().eq('id', id).eq('user_email', user?.email);
-    setSavedViews(p => p.filter(v => v.id !== id));
-    if (activeViewId === id) applyFullView();
   };
 
   // ── filter options ──────────────────────────────────────────────────────────
@@ -236,8 +302,8 @@ export default function Orders() {
 
   // ── KPIs ────────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => computeAggregations(filteredOrders, [
-    { name: 'count', field: 'order_id', operation: 'count' },
-    { name: 'totalQty', field: 'quantity', operation: 'sum' },
+    { name: 'count',    field: 'order_id',  operation: 'count' },
+    { name: 'totalQty', field: 'quantity',  operation: 'sum' },
   ]), [filteredOrders]);
 
   const deliveredCount = useMemo(() => filteredOrders.filter(o => o.delivery_status === 'Delivered' || o.status === 'Delivered').length, [filteredOrders]);
@@ -247,16 +313,15 @@ export default function Orders() {
   const statusChart = useMemo(() => {
     const m = {};
     filteredOrders.forEach(o => { const s = o.delivery_status || o.status || 'Pending'; m[s] = (m[s]||0)+1; });
-    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value);
+    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
   }, [filteredOrders]);
 
   const floristChart = useMemo(() => {
     const m = {};
     filteredOrders.forEach(o => { const f = o.florist && o.florist !== '—' ? o.florist : null; if (f) m[f] = (m[f]||0)+1; });
-    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value).slice(0,8);
+    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0,8);
   }, [filteredOrders]);
 
-  // ── loading / error ─────────────────────────────────────────────────────────
   if (isLoading) return <LoadingState />;
   if (error) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -266,13 +331,11 @@ export default function Orders() {
     </div>
   );
 
-  // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className="w-full min-w-0 space-y-4 pb-10">
 
-      {/* ── HERO HEADER ────────────────────────────────────────────────────── */}
+      {/* HERO */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-5 shadow-lg sm:p-6">
-        {/* decorative blobs */}
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-8 left-20 h-28 w-28 rounded-full bg-white/5" />
 
@@ -288,18 +351,13 @@ export default function Orders() {
               {filteredOrders.length} orders · live from Google Sheets
             </p>
           </div>
-
-          <button
-            onClick={refetch}
-            disabled={isLoading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/20 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 sm:w-auto"
-          >
+          <button onClick={refetch} disabled={isLoading}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/20 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 sm:w-auto">
             <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
 
-        {/* KPI strip */}
         <div className="relative mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {[
             { label: 'Orders',    value: kpis.count,     icon: ShoppingBag },
@@ -318,9 +376,8 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* ── DATE FILTERS ───────────────────────────────────────────────────── */}
+      {/* DATE FILTERS */}
       <div className="grid gap-3 sm:grid-cols-2">
-        {/* Order date */}
         <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50">
@@ -346,7 +403,6 @@ export default function Orders() {
           )}
         </div>
 
-        {/* Delivery date */}
         <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50">
@@ -359,15 +415,12 @@ export default function Orders() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {DATE_BTNS.map(b => (
-              <button
-                key={b.key}
-                onClick={() => setDeliveryDateFilter(b.key)}
+              <button key={b.key} onClick={() => setDeliveryDateFilter(b.key)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
                   deliveryDateFilter === b.key
                     ? 'bg-blue-500 text-white shadow-sm shadow-blue-200'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
+                }`}>
                 {b.label}
               </button>
             ))}
@@ -383,13 +436,10 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* ── FILTERS ROW ────────────────────────────────────────────────────── */}
+      {/* FILTERS ROW */}
       <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
-        {/* mobile toggle */}
-        <button
-          onClick={() => setFiltersOpen(v => !v)}
-          className="flex w-full items-center justify-between px-4 py-3.5 sm:hidden"
-        >
+        <button onClick={() => setFiltersOpen(v => !v)}
+          className="flex w-full items-center justify-between px-4 py-3.5 sm:hidden">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-rose-400" />
             <span className="text-sm font-semibold text-slate-800">Filters</span>
@@ -402,29 +452,19 @@ export default function Orders() {
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {/* desktop always visible, mobile collapsible */}
         <div className={`px-4 pb-4 pt-1 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:px-4 sm:py-3 ${filtersOpen ? 'block' : 'hidden sm:flex'}`}>
           <div className="flex items-center gap-1.5 pb-2 sm:pb-0">
             <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
             <span className="hidden text-xs font-semibold text-slate-400 sm:inline">FILTERS</span>
           </div>
-
           <div className="flex flex-wrap gap-2">
             {filterConfigs.map(cfg => (
-              <FilterChip
-                key={cfg.key}
-                label={cfg.label}
-                value={filters[cfg.key]}
-                options={cfg.options}
-                onChange={val => setFilters(p => ({ ...p, [cfg.key]: val }))}
-              />
+              <FilterChip key={cfg.key} label={cfg.label} value={filters[cfg.key]} options={cfg.options}
+                onChange={val => setFilters(p => ({ ...p, [cfg.key]: val }))} />
             ))}
-
             {hasActiveFilters && (
-              <button
-                onClick={() => setFilters({})}
-                className="flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition"
-              >
+              <button onClick={() => setFilters({})}
+                className="flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition">
                 <X className="h-3 w-3" /> Clear
               </button>
             )}
@@ -432,9 +472,8 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* ── ORDERS TABLE ───────────────────────────────────────────────────── */}
+      {/* ORDERS TABLE */}
       <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
-        {/* table toolbar */}
         <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-slate-900">Orders List</p>
@@ -442,23 +481,19 @@ export default function Orders() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* view pills */}
-            <button
-              onClick={applyFullView}
+            <button onClick={applyFullView}
               className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                 activeViewId === 'default' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >Full</button>
+              }`}>Full</button>
 
             {savedViews.map(v => (
               <div key={v.id} className="flex items-center gap-1">
-                <button
-                  onClick={() => applyView(v)}
+                <button onClick={() => applyView(v)}
                   className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                     activeViewId === v.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >{v.view_name}</button>
-                <button onClick={() => deleteView(v.id)} className="rounded-full bg-red-50 px-1.5 py-1 text-[10px] font-bold text-red-400 hover:bg-red-100">×</button>
+                  }`}>{v.view_name}</button>
+                <button onClick={() => deleteView(v.id)}
+                  className="rounded-full bg-red-50 px-1.5 py-1 text-[10px] font-bold text-red-400 hover:bg-red-100">×</button>
               </div>
             ))}
 
@@ -466,20 +501,15 @@ export default function Orders() {
               <span className="rounded-full bg-amber-50 px-2.5 py-1.5 text-[10px] font-semibold text-amber-600">Unsaved</span>
             )}
 
-            <button
-              onClick={() => setViewModalOpen(true)}
-              className="flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition"
-            >
+            <button onClick={() => setViewModalOpen(true)}
+              className="flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">
               <Save className="h-3 w-3" /> Save view
             </button>
 
-            {/* columns picker */}
             <div className="relative">
               {columnMenuOpen && <div className="fixed inset-0 z-40" onClick={() => setColumnMenuOpen(false)} />}
-              <button
-                onClick={() => setColumnMenuOpen(v => !v)}
-                className="relative z-50 flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-              >
+              <button onClick={() => setColumnMenuOpen(v => !v)}
+                className="relative z-50 flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                 <Eye className="h-3.5 w-3.5" /> Columns
               </button>
 
@@ -490,8 +520,7 @@ export default function Orders() {
                     {popupColumns.map(col => {
                       const visible = visibleColumns.includes(col.key);
                       return (
-                        <div
-                          key={col.key}
+                        <div key={col.key}
                           draggable={visible}
                           onDragStart={() => setDragColumnKey(col.key)}
                           onDragOver={e => e.preventDefault()}
@@ -499,8 +528,7 @@ export default function Orders() {
                           onDragEnd={() => setDragColumnKey(null)}
                           className={`flex items-center justify-between rounded-2xl px-3 py-2 text-xs transition ${
                             visible ? 'cursor-grab hover:bg-slate-50 active:cursor-grabbing' : 'cursor-default opacity-50 hover:bg-slate-50'
-                          } ${dragColumnKey === col.key ? 'bg-rose-50' : ''}`}
-                        >
+                          } ${dragColumnKey === col.key ? 'bg-rose-50' : ''}`}>
                           <div className="flex items-center gap-2">
                             <GripVertical className="h-3.5 w-3.5 text-slate-300 shrink-0" />
                             <span className="font-medium text-slate-700">{col.label}</span>
@@ -523,7 +551,7 @@ export default function Orders() {
         <DataTable columns={displayedColumns} data={filteredOrders} pageSize={10} />
       </div>
 
-      {/* ── CHARTS ─────────────────────────────────────────────────────────── */}
+      {/* CHARTS */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ChartCard title="Orders by Delivery Status" type="pie" data={statusChart}
           dataKeys={[{ key: 'value', label: 'Orders' }]} xKey="name" height={240} />
@@ -531,19 +559,15 @@ export default function Orders() {
           dataKeys={[{ key: 'value', label: 'Orders' }]} xKey="name" height={240} />
       </div>
 
-      {/* ── SAVE VIEW MODAL ─────────────────────────────────────────────────── */}
+      {/* SAVE VIEW MODAL */}
       {viewModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
             <h3 className="text-base font-bold text-slate-900">Save Current View</h3>
             <p className="mt-0.5 text-xs text-slate-400">Choose columns then give this view a name.</p>
-
-            <input
-              type="text" value={newViewName} onChange={e => setNewViewName(e.target.value)}
+            <input type="text" value={newViewName} onChange={e => setNewViewName(e.target.value)}
               placeholder="e.g. Logistics, Florist view..."
-              className="mt-4 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-slate-400"
-            />
-
+              className="mt-4 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-slate-400" />
             <div className="mt-3 max-h-52 overflow-y-auto rounded-2xl border border-slate-100 p-3">
               <div className="grid grid-cols-2 gap-1">
                 {columns.map(col => (
@@ -555,7 +579,6 @@ export default function Orders() {
                 ))}
               </div>
             </div>
-
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setViewModalOpen(false); setNewViewName(''); }}
                 className="rounded-2xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition">
