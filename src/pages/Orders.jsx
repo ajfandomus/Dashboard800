@@ -479,13 +479,17 @@ export default function Orders() {
   <p className="font-semibold text-slate-900">Orders List</p>
 
   <p className="text-xs text-slate-400">
-    {filteredOrders.length} records synced · {
+    {filteredOrders.length} records synced
+  </p>
+
+  <p className="mt-1 text-xs font-medium text-blue-600">
+    Delivery Date: {
       deliveryDateFilter === 'today'
-        ? `Today - ${new Date().toLocaleDateString('en-GB')}`
+        ? `Today (${new Date().toLocaleDateString('en-GB')})`
         : deliveryDateFilter === 'yesterday'
-        ? `Yesterday - ${new Date(Date.now() - 86400000).toLocaleDateString('en-GB')}`
+        ? `Yesterday (${new Date(Date.now() - 86400000).toLocaleDateString('en-GB')})`
         : deliveryDateFilter === 'custom' && deliveryFromDate && deliveryToDate
-        ? `${new Date(deliveryFromDate).toLocaleDateString('en-GB')} to ${new Date(deliveryToDate).toLocaleDateString('en-GB')}`
+        ? `${new Date(deliveryFromDate).toLocaleDateString('en-GB')} → ${new Date(deliveryToDate).toLocaleDateString('en-GB')}`
         : deliveryDateFilter === 'week'
         ? 'Last 7 Days'
         : deliveryDateFilter === 'month'
