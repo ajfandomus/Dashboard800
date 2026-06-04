@@ -64,7 +64,9 @@ function FloristCell({ value }) {
   const v = String(value || '').trim();
   if (!v || v === 'N/A' || v === 'n/a' || v === '-' || v === '—')
     return <span className="text-slate-400">-</span>;
-  return <span className="text-sm text-slate-800">{v}</span>;
+  if (v === 'Not Ready')
+    return <span className="inline-flex items-center rounded-md bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Not Ready</span>;
+  return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">{v}</span>;
 }
 
 // ─── enhanced columns with renderers ─────────────────────────────────────────
