@@ -10,16 +10,16 @@ import { supabase } from '@/lib/supabaseClient';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [authError, setAuthError] = useState(null);
+  const [user, setUser]               = useState(null);
+  const [isLoadingAuth, setIsLoading] = useState(true);
+  const [authError, setAuthError]     = useState(null);
 
-  // Prevent overlapping validateAllowedUser calls
-  const validatingRef = useRef(false);
+  const validatingRef  = useRef(false);
+  const initializedRef = useRef(false); // has the first session check resolved?
 
+  // ── validate against allowed_users table ──────────────────────────────
   const validateAllowedUser = async (loggedUser) => {
     if (!loggedUser?.email) return null;
-
     try {
       const { data, error } = await supabase
         .from('allowed_users')
@@ -32,66 +32,91 @@ export const AuthProvider = ({ children }) => {
         window.location.href = '/login?error=access_denied';
         return null;
       }
-
       return { ...loggedUser, role: data.role || 'user' };
-    } catch (err) {
+    } catch {
       await supabase.auth.signOut();
       window.location.href = '/login?error=access_denied';
       return null;
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
+  // ── handle a session object (shared by both paths) ────────────────────
+  const handleSession = async (session, { cancelled }) => {
+    if (cancelled.value) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (cancelled) return;
+    if (!session?.user) {
+      setUser(null);
+      setAuthError(null);
+      setIsLoading(false);
+      return;
+    }
 
-      // If already validating, skip duplicate fires
-      if (validatingRef.current) return;
+    // guard against concurrent calls
+    if (validatingRef.current) return;
+    validatingRef.current = true;
+    setIsLoading(true);
 
-      if (!session?.user) {
+    try {
+      const allowedUser = await validateAllowedUser(session.user);
+      if (cancelled.value) return;
+      setUser(allowedUser);
+      if (allowedUser) setAuthError(null);
+    } catch {
+      if (!cancelled.value) {
         setUser(null);
-        setAuthError(null);
-        setIsLoadingAuth(false);
-        return;
+        setAuthError('Authentication failed. Please try again.');
       }
+    } finally {
+      validatingRef.current = false;
+      if (!cancelled.value) setIsLoading(false);
+    }
+  };
 
-      validatingRef.current = true;
-      setIsLoadingAuth(true);
+  useEffect(() => {
+    const cancelled = { value: false };
 
-      try {
-        const allowedUser = await validateAllowedUser(session.user);
-
-        if (cancelled) return;
-
-        setUser(allowedUser);
-        if (allowedUser) setAuthError(null);
-      } catch (err) {
-        if (!cancelled) {
-          setUser(null);
-          setAuthError('Authentication failed. Please try again.');
-        }
-      } finally {
-        validatingRef.current = false;
-        if (!cancelled) {
-          setIsLoadingAuth(false);
-        }
-      }
+    // ── FAST PATH: check existing session immediately on mount ──────────
+    // This runs in parallel with onAuthStateChange and guarantees the
+    // spinner clears even if the subscription callback is delayed/skipped.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled.value || initializedRef.current) return;
+      initializedRef.current = true;
+      handleSession(session, { cancelled });
     });
 
+    // ── SAFETY NET: if nothing resolves in 8 seconds, stop spinning ─────
+    const timeout = setTimeout(() => {
+      if (!initializedRef.current && !cancelled.value) {
+        console.warn('[Auth] Session check timed out — clearing spinner');
+        setIsLoading(false);
+        initializedRef.current = true;
+      }
+    }, 8000);
+
+    // ── SUBSCRIPTION: handles sign-in / sign-out events after load ──────
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (cancelled.value) return;
+
+        // If getSession already resolved first, skip the INITIAL_SESSION
+        // event to avoid a double-validate race
+        if (initializedRef.current && _event === 'INITIAL_SESSION') return;
+
+        initializedRef.current = true;
+        clearTimeout(timeout);
+        handleSession(session, { cancelled });
+      }
+    );
+
     return () => {
-      cancelled = true;
+      cancelled.value = true;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
-  const navigateToLogin = () => {
     window.location.href = '/login';
   };
 
@@ -105,7 +130,7 @@ export const AuthProvider = ({ children }) => {
         authError,
         authChecked: !isLoadingAuth,
         logout,
-        navigateToLogin,
+        navigateToLogin: () => { window.location.href = '/login'; },
         checkUserAuth: () => {},
         checkAppState: () => {},
       }}
@@ -117,8 +142,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
