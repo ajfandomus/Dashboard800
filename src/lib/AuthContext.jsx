@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,6 +13,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
+
+  // Prevent overlapping validateAllowedUser calls
+  const validatingRef = useRef(false);
 
   const validateAllowedUser = async (loggedUser) => {
     if (!loggedUser?.email) return null;
@@ -43,6 +47,9 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (cancelled) return;
 
+      // If already validating, skip duplicate fires
+      if (validatingRef.current) return;
+
       if (!session?.user) {
         setUser(null);
         setAuthError(null);
@@ -50,12 +57,27 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      validatingRef.current = true;
       setIsLoadingAuth(true);
-      const allowedUser = await validateAllowedUser(session.user);
-      if (cancelled) return;
-      setUser(allowedUser);
-      if (allowedUser) setAuthError(null);
-      setIsLoadingAuth(false);
+
+      try {
+        const allowedUser = await validateAllowedUser(session.user);
+
+        if (cancelled) return;
+
+        setUser(allowedUser);
+        if (allowedUser) setAuthError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setUser(null);
+          setAuthError('Authentication failed. Please try again.');
+        }
+      } finally {
+        validatingRef.current = false;
+        if (!cancelled) {
+          setIsLoadingAuth(false);
+        }
+      }
     });
 
     return () => {
