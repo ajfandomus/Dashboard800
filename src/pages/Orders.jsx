@@ -74,6 +74,7 @@ const enhancedColumns = columns.map(col => {
   if (col.key === 'print_status')    return { ...col, render: v => <PrintStatusCell value={v} /> };
   if (col.key === 'delivery_status') return { ...col, render: v => <DeliveryStatusCell value={v} /> };
   if (col.key === 'florist')         return { ...col, render: v => <FloristCell value={v} /> };
+  if (col.key === 'delivery_date')   return { ...col, render: v => <span>{formatDeliveryDate(v)}</span> };
   // default: replace N/A with dash
   return {
     ...col,
