@@ -146,6 +146,7 @@ const eob = d => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
 function getDateRange(type, from, to) {
   const today = new Date();
   if (type === 'today')     return { from: sob(today), to: eob(today) };
+  if (type === 'tomorrow')  { const t = new Date(); t.setDate(t.getDate()+1); return { from: sob(t), to: eob(t) }; }
   if (type === 'yesterday') { const y = new Date(); y.setDate(y.getDate()-1); return { from: sob(y), to: eob(y) }; }
   if (type === 'week')      { const w = new Date(); w.setDate(w.getDate()-7); return { from: sob(w), to: eob(today) }; }
   if (type === 'month')     return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: eob(today) };
@@ -156,6 +157,7 @@ function getDateRange(type, from, to) {
 const DATE_BTNS = [
   { key: 'all', label: 'All' },
   { key: 'today', label: 'Today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
   { key: 'yesterday', label: 'Yesterday' },
   { key: 'week', label: '7 Days' },
   { key: 'month', label: 'Month' },
@@ -232,6 +234,7 @@ function fmtShort(dateStr) {
 
 function DeliveryDateBadge({ filter, from, to }) {
   const today    = new Date();
+  const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
   const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
 
   let icon = '🚚';
@@ -244,6 +247,11 @@ function DeliveryDateBadge({ filter, from, to }) {
     dateStr = today.toLocaleDateString('en-AE', { weekday: 'short', day: '2-digit', month: 'short' });
     colorClass = 'bg-emerald-50 border-emerald-200 text-emerald-700';
     icon = '🌸';
+  } else if (filter === 'tomorrow') {
+    label = 'Delivering Tomorrow';
+    dateStr = tomorrow.toLocaleDateString('en-AE', { weekday: 'short', day: '2-digit', month: 'short' });
+    colorClass = 'bg-amber-50 border-amber-200 text-amber-700';
+    icon = '📦';
   } else if (filter === 'yesterday') {
     label = 'Delivered Yesterday';
     dateStr = yesterday.toLocaleDateString('en-AE', { weekday: 'short', day: '2-digit', month: 'short' });
