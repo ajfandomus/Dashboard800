@@ -31,7 +31,8 @@ const statusColors = {
   Cancelled:    'bg-red-50 text-red-700 border-red-200',
 };
 
-const compactColumns = ['quantity', 'payment', 'print_status', 'delivery_status'];
+const compactColumns = ['quantity', 'payment'];
+const statusColumns = ['print_status', 'delivery_status', 'florist'];
 const wideColumns = ['product', 'address'];
 const mediumColumns = ['order_date', 'delivery_date', 'customer_name', 'florist'];
 
@@ -106,6 +107,7 @@ export default function DataTable({ columns, data, pageSize = 10 }) {
   };
 
   const getCellClass = key => {
+    if (statusColumns.includes(key)) return 'min-w-[120px] max-w-[140px]';
     if (wideColumns.includes(key)) return 'min-w-[260px] max-w-[360px]';
     if (mediumColumns.includes(key)) return 'min-w-[140px] max-w-[190px]';
     if (compactColumns.includes(key)) return 'min-w-[90px] max-w-[120px]';
