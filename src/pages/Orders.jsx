@@ -39,10 +39,10 @@ function PrintStatusCell({ value }) {
   if (!v || v === 'N/A' || v === 'n/a' || v === '-')
     return <span className="text-slate-400">-</span>;
   if (v.toUpperCase() === 'PRINTED')
-    return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">PRINTED</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">PRINTED</span>;
   if (v === 'Not Printed')
-    return <span className="inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Not Printed</span>;
-  return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Not Printed</span>;
+  return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
 }
 
 function DeliveryStatusCell({ value }) {
@@ -50,14 +50,14 @@ function DeliveryStatusCell({ value }) {
   if (!v || v === 'N/A' || v === 'n/a' || v === '-')
     return <span className="text-slate-400">-</span>;
   if (v === 'Dispatched')
-    return <span className="inline-flex items-center rounded-md bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">Dispatched</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">Dispatched</span>;
   if (v === 'Delivered')
-    return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Delivered</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Delivered</span>;
   if (v === 'No Driver')
-    return <span className="inline-flex items-center rounded-md bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">No Driver</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">No Driver</span>;
   if (v === 'Not Needed')
-    return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Not Needed</span>;
-  return <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Not Needed</span>;
+  return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{v}</span>;
 }
 
 function FloristCell({ value }) {
@@ -65,8 +65,8 @@ function FloristCell({ value }) {
   if (!v || v === 'N/A' || v === 'n/a' || v === '-' || v === '—')
     return <span className="text-slate-400">-</span>;
   if (v === 'Not Ready')
-    return <span className="inline-flex items-center rounded-md bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Not Ready</span>;
-  return <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">{v}</span>;
+    return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Not Ready</span>;
+  return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">{v}</span>;
 }
 
 // ─── enhanced columns with renderers ─────────────────────────────────────────
