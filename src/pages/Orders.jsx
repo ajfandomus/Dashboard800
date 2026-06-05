@@ -132,6 +132,35 @@ const DATE_BTNS = [
   { key: 'custom', label: 'Custom' },
 ];
 
+// ─── summary card components ──────────────────────────────────────────────────
+function SummaryCard({ title, icon: Icon, data, color = 'slate' }) {
+  const colorMap = {
+    slate: 'bg-slate-50 border-slate-200',
+    rose: 'bg-rose-50 border-rose-200',
+    blue: 'bg-blue-50 border-blue-200',
+    emerald: 'bg-emerald-50 border-emerald-200',
+    amber: 'bg-amber-50 border-amber-200',
+    violet: 'bg-violet-50 border-violet-200',
+  };
+
+  return (
+    <div className={`rounded-2xl border ${colorMap[color]} p-4`}>
+      <div className="mb-3 flex items-center gap-2">
+        {Icon && <Icon className="h-4 w-4 text-slate-500" />}
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p>
+      </div>
+      <div className="space-y-2">
+        {data.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5 text-xs">
+            <span className="font-medium text-slate-700">{item.label}</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-bold text-slate-900">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── small reusable pieces ────────────────────────────────────────────────────
 function DatePill({ active, onClick, label }) {
   return (
@@ -371,6 +400,79 @@ export default function Orders() {
     return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value).slice(0,8);
   }, [filteredOrders]);
 
+  // ── summary data ────────────────────────────────────────────────────────────
+  const deliveryDateSummary = useMemo(() => {
+    const m = {};
+    filteredOrders.forEach(o => {
+      const d = o.delivery_date || 'Unknown';
+      m[d] = (m[d] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+      .slice(0, 5)
+      .map(([date, count]) => ({
+        label: date,
+        value: count,
+      }));
+  }, [filteredOrders]);
+
+  const deliveryStatusSummary = useMemo(() => {
+    const m = {};
+    filteredOrders.forEach(o => {
+      const s = o.delivery_status || 'Pending';
+      m[s] = (m[s] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[1] - a[1])
+      .map(([status, count]) => ({
+        label: status,
+        value: count,
+      }));
+  }, [filteredOrders]);
+
+  const channelSummary = useMemo(() => {
+    const m = {};
+    filteredOrders.forEach(o => {
+      const c = o.payment || 'Direct';
+      m[c] = (m[c] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[1] - a[1])
+      .map(([channel, count]) => ({
+        label: channel,
+        value: count,
+      }));
+  }, [filteredOrders]);
+
+  const floristSummary = useMemo(() => {
+    const m = {};
+    filteredOrders.forEach(o => {
+      const f = o.florist || 'Unassigned';
+      if (f !== '—') m[f] = (m[f] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([florist, count]) => ({
+        label: florist,
+        value: count,
+      }));
+  }, [filteredOrders]);
+
+  const printStatusSummary = useMemo(() => {
+    const m = {};
+    filteredOrders.forEach(o => {
+      const p = o.print_status || 'Unknown';
+      m[p] = (m[p] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[1] - a[1])
+      .map(([status, count]) => ({
+        label: status,
+        value: count,
+      }));
+  }, [filteredOrders]);
+
   // ── loading / error ─────────────────────────────────────────────────────────
   if (isLoading) return <LoadingState />;
   if (error) return (
@@ -431,6 +533,35 @@ export default function Orders() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── SUMMARY CARDS ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <SummaryCard
+          title="📅 Live Orders by Delivery Date"
+          data={deliveryDateSummary}
+          color="blue"
+        />
+        <SummaryCard
+          title="🚚 Logistics Order Status"
+          data={deliveryStatusSummary}
+          color="emerald"
+        />
+        <SummaryCard
+          title="💳 Orders by Channel"
+          data={channelSummary}
+          color="rose"
+        />
+        <SummaryCard
+          title="🌸 Florist Assignments"
+          data={floristSummary}
+          color="violet"
+        />
+        <SummaryCard
+          title="🖨️ Print Status Summary"
+          data={printStatusSummary}
+          color="amber"
+        />
       </div>
 
       {/* ── DATE FILTERS ───────────────────────────────────────────────────── */}
