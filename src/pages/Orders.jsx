@@ -84,6 +84,36 @@ const enhancedColumns = columns.map(col => {
   };
 });
 
+function formatDeliveryDate(value) {
+  if (!value) return 'Unknown';
+  
+  const text = String(value).trim();
+  const parts = text.split(/[\/\-]/);
+  
+  if (parts.length === 3) {
+    let day, month, year;
+    
+    // Try to detect format
+    // If first part > 12, it's DD/MM/YYYY or DD-MM-YYYY
+    // Otherwise assume MM/DD/YYYY
+    if (parseInt(parts[0], 10) > 12) {
+      [day, month, year] = parts;
+    } else if (parseInt(parts[1], 10) > 12) {
+      [month, day, year] = parts;
+    } else {
+      // Ambiguous - try both, prefer DD-MM-YYYY
+      [day, month, year] = parts;
+    }
+    
+    const d = new Date(Number(year), Number(month) - 1, Number(day));
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  }
+  
+  return text;
+}
+
 // ─── date helpers ─────────────────────────────────────────────────────────────
 function parseOrderDate(value) {
   if (!value) return null;
@@ -404,11 +434,15 @@ export default function Orders() {
   const deliveryDateSummary = useMemo(() => {
     const m = {};
     filteredOrders.forEach(o => {
-      const d = o.delivery_date || 'Unknown';
+      const d = formatDeliveryDate(o.delivery_date);
       m[d] = (m[d] || 0) + 1;
     });
     return Object.entries(m)
-      .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+      .sort((a, b) => {
+        const dateA = new Date(a[0].split('/').reverse().join('-'));
+        const dateB = new Date(b[0].split('/').reverse().join('-'));
+        return dateA - dateB;
+      })
       .slice(0, 5)
       .map(([date, count]) => ({
         label: date,
